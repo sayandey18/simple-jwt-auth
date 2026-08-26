@@ -1,10 +1,9 @@
 <?php
 
-/* Require the Firebase JWT and Crypto library. */
-use Simple_Jwt_Auth\Firebase\JWT\JWT;
-use Simple_Jwt_Auth\Firebase\JWT\Key;
+/* Require the token, database and notice libraries. */
 use Simple_Jwt_Auth\Database\DBManager;
-use Simple_Jwt_Auth\OpenSSL\Crypto;
+use Simple_Jwt_Auth\Database\RefreshStore;
+use Simple_Jwt_Auth\Token\TokenManager;
 use Simple_Jwt_Auth\Notice\JWTNotice;
 
 /**
@@ -20,7 +19,7 @@ use Simple_Jwt_Auth\Notice\JWTNotice;
  */
 
 class Simple_Jwt_Auth_Api extends Simple_Jwt_Auth_Public {
-    /**
+	/**
 	 * The ID of this plugin.
 	 *
 	 * @since    1.0.0
@@ -47,93 +46,124 @@ class Simple_Jwt_Auth_Api extends Simple_Jwt_Auth_Public {
 	 */
 	private string $endpoint;
 
-    /**
+	/**
 	 * Store errors to display if the JWT is wrong.
+	 *
 	 * @since   1.0.0
 	 * @var     WP_Error|null
 	 */
-    private ?WP_Error $jwt_error = null;
+	private ?WP_Error $jwt_error = null;
 
-    /**
-     * Supported algorithms to sign the token.
-     * 
-     * @since   1.0.0
-	 * @see     https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-40
-     */
-    private array $supported_algos = [
-		'HS256', 'HS384', 'HS512', 
-		'RS256', 'RS384', 'RS512', 
-		'ES256', 'ES384', 'ES512', 
-		'PS256', 'PS384', 'PS512'
-	];
-
-    /**
+	/**
 	 * Initialize the class and set its properties.
 	 *
 	 * @since   1.0.0
 	 * @param   string $plugin_name
 	 * @param   string $version
-     * @param   string $endpoint
+	 * @param   string $endpoint
 	 */
 	public function __construct( string $plugin_name, string $version, string $endpoint ) {
 		parent::__construct( $plugin_name, $version );
-        
-        $this->endpoint = $endpoint . '/v' . intval( $version );
+
+		$this->endpoint = $endpoint . '/v' . intval( SIMPLE_JWT_AUTH_API_VERSION );
 	}
 
-    /**
+	/**
 	 * Add the endpoints to the API
-	 * 
-	 * @since	1.0.0
+	 *
+	 * @since 1.0.0
 	 */
 	public function simplejwt_add_api_routes() {
-		register_rest_route( $this->endpoint, 'token', 
+		register_rest_route(
+			$this->endpoint,
+			'token',
 			array(
 				'methods'             => 'POST',
 				'callback'            => array( $this, 'simplejwt_generate_token' ),
 				'permission_callback' => '__return_true',
-			) 
+			)
 		);
 
-		register_rest_route( $this->endpoint, 'token/validate', 
+		register_rest_route(
+			$this->endpoint,
+			'token/refresh',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'simplejwt_refresh_token' ),
+				'permission_callback' => '__return_true',
+			)
+		);
+
+		register_rest_route(
+			$this->endpoint,
+			'token/revoke',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'simplejwt_revoke_token' ),
+				'permission_callback' => '__return_true',
+			)
+		);
+
+		register_rest_route(
+			$this->endpoint,
+			'token/validate',
 			array(
 				'methods'             => 'POST',
 				'callback'            => array( $this, 'simplejwt_validate_token' ),
 				'permission_callback' => '__return_true',
-			) 
+			)
+		);
+
+		register_rest_route(
+			$this->endpoint,
+			'me',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'simplejwt_me' ),
+				'permission_callback' => '__return_true',
+			)
 		);
 	}
 
-    /**
+	/**
 	 * Add CORS support to the request.
-	 * 
-	 * @since	1.0.0
+	 *
+	 * @since 1.0.0
 	 */
 	public function simplejwt_add_cors_support() {
 		// Check the CORS status from database.
-		$enable_cors = filter_var( 
+		$enable_cors = filter_var(
 			DBManager::get_config( 'enable_cors' ),
-			FILTER_VALIDATE_BOOLEAN 
+			FILTER_VALIDATE_BOOLEAN
 		);
 
 		if ( $enable_cors ) {
-			$headers = apply_filters( 'simplejwt_cors_allow_headers',
-				'Access-Control-Allow-Headers, Content-Type, Authorization' );
+			$headers = apply_filters(
+				'simplejwt_cors_allow_headers',
+				'Access-Control-Allow-Headers, Content-Type, Authorization'
+			);
 			header( sprintf( 'Access-Control-Allow-Headers: %s', $headers ) );
 		}
 	}
 
-    /** 
-     * Get the user and password in the request body and generate a JWT token 
-     * for further authentication.
-	 * 
-     * @param	WP_REST_Request $request
-	 * @return	mixed|WP_Error|null
-     * 
-    */
-    public function simplejwt_generate_token( WP_REST_Request $request ) {
+	/**
+	 * Get the user and password in the request body and generate a JWT token
+	 * for further authentication.
+	 *
+	 * @param WP_REST_Request $request
+	 * @return mixed|WP_Error|null
+	 */
+	public function simplejwt_generate_token( WP_REST_Request $request ) {
+		if ( ! $this->simplejwt_is_auth_enabled() ) {
+			return new WP_Error(
+				'simplejwt_bad_config',
+				JWTNotice::get_notice( 'auth_disabled' ),
+				array( 'status' => 403 )
+			);
+		}
+
 		// Get the username and password from REST request.
-        $username = $request->get_param( 'username' );
+		$username = $request->get_param( 'username' );
 		$password = $request->get_param( 'password' );
 
 		// Check if username or password is missing and return an error.
@@ -141,332 +171,591 @@ class Simple_Jwt_Auth_Api extends Simple_Jwt_Auth_Public {
 			return new WP_Error(
 				'simplejwt_missing_credentials',
 				JWTNotice::get_notice( 'missing_credential' ),
-				['status' => 400]
+				array( 'status' => 400 )
+			);
+		}
+
+		// Basic rate limiting against brute force.
+		if ( ! $this->simplejwt_rate_limit( 'login_' . $username . '_' . $this->simplejwt_client_ip() ) ) {
+			return new WP_Error(
+				'simplejwt_rate_limited',
+				JWTNotice::get_notice( 'rate_limited' ),
+				array( 'status' => 429 )
 			);
 		}
 
 		// Get defined algorithm from the database.
-        $algorithm = $this->simplejwt_get_algorithm();
-        
-        // Check algorithm if not exist return an error.
-        if ( !$algorithm ) {
+		$algorithm = TokenManager::get_algorithm();
+
+		// Check algorithm if not exist return an error.
+		if ( ! $algorithm ) {
 			return new WP_Error(
 				'simplejwt_unsupported_algorithm',
 				JWTNotice::get_notice( 'unsupported_algo' ),
-				['status' => 403]
+				array( 'status' => 403 )
 			);
 		}
 
-		// Determine if we're using symmetric (HS*) or asymmetric algorithms.
-		$key_type = in_array( $algorithm, ['HS256', 'HS384', 'HS512'], true ) ? 'secret_key' : 'private_key';
+		// Verify the signing key is configured before authenticating.
+		$signing_key = TokenManager::get_signing_key( $algorithm, 'sign' );
 
-		// Get the `signing_key` from database based on key type.
-		$signing_key = DBManager::get_config( $key_type );
-
-		// Check the signing key if not exist return an error.
-		if ( $signing_key === false ) {
-			return new WP_Error(
-				'simplejwt_bad_' . $key_type,
-				JWTNotice::get_notice( 'bad_' . $key_type ),
-				['status' => 403]
-			);
-		}
-
-		// Decrypt the `secret_key` key using `AES-256-GCM` algo.
-		$encode_key = Crypto::decrypt(
-			sanitize_textarea_field( $signing_key )
-		);
-
-		// If there is WP_Error, return the error.
-		if ( is_wp_error( $encode_key ) ) {
-			return $encode_key;
+		if ( is_wp_error( $signing_key ) ) {
+			return $signing_key;
 		}
 
 		// Authenticate the user with the password cred.
-        $user = wp_authenticate( $username, $password );
+		$user = wp_authenticate( $username, $password );
 
-        //  If the authentication fails return an error.
+		// If the authentication fails return an error.
 		if ( is_wp_error( $user ) ) {
-			$error_code = $user->get_error_code();
-            $error_message = $user->get_error_message();
+			$error_code    = $user->get_error_code();
+			$error_message = $user->get_error_message();
 
 			return new WP_Error(
-				'simplejwt_' . $error_code, 
-				wp_strip_all_tags( $error_message ), 
-				['status' => 403]
+				'simplejwt_' . $error_code,
+				wp_strip_all_tags( $error_message ),
+				array( 'status' => 403 )
 			);
 		}
 
-        // If the user validated create according JWT Token.
-		$issued_at  = time();
-		$not_before = apply_filters( 'simplejwt_not_before', $issued_at, $issued_at );
-		$expire     = apply_filters( 'simplejwt_auth_expire', $issued_at + ( DAY_IN_SECONDS * 7 ), $issued_at );
+		// Issue the access token.
+		$access_token = TokenManager::issue_access_token( $user );
 
-		$payload = [
-			'iss'  => $this->simplejwt_get_iss(),
-			'iat'  => $issued_at,
-			'nbf'  => $not_before,
-			'exp'  => $expire,
-			'data' => [
-				'user' => [
-					'id' => $user->data->ID,
-				],
-			],
-		];
-
-        // Let the user modify the token data before the sign.
-        $token = JWT::encode(
-			apply_filters( 'simplejwt_payload_before_sign', $payload, $user ),
-			$encode_key,
-			$algorithm
-		);
-
-		// Return error, there is any problem in creating token.
-		if ( is_string( $token ) === false ) {
-			return new WP_Error(
-				'simplejwt_token_creation_error', 
-				JWTNotice::get_notice( 'unknown_error' ),
-				['status' => 500]
-			);
+		if ( is_wp_error( $access_token ) ) {
+			return $access_token;
 		}
 
-		// Prepare the token response.
-		$data = new WP_REST_Response( array(
-			'code'    => 'simplejwt_auth_credential',
-			'message' => JWTNotice::get_notice( 'auth_credential' ),
-			'data'    => [
-				'status'       => 200,
-				'id'           => $user->data->ID,
-				'email'        => $user->data->user_email,
-				'nicename'     => $user->data->user_nicename,
-				'display_name' => $user->data->display_name,
-				'token'        => $token
-			]
-		), 200 );
+		// Issue and persist the refresh token.
+		$refresh_token = $this->simplejwt_issue_refresh_token( $user->ID );
 
-        // Let the user modify the data before send it back using `add_filter`.
-        return apply_filters( 'simplejwt_token_before_dispatch', $data, $user );
-    }
+		if ( is_wp_error( $refresh_token ) ) {
+			return $refresh_token;
+		}
 
-    /**
-	 * This function is used by the /token/validate endpoint and by our middleware.
+		return $this->simplejwt_token_response( $user, $access_token, $refresh_token );
+	}
+
+	/**
+	 * Refresh an access token (with rotation) using a refresh token.
 	 *
-	 * The function take the token and try to decode it and validated it.
-	 * @since   1.0.0
-	 * 
-	 * @param   WP_REST_Request $request
-	 * @param	bool|string $custom_token
-	 * 
-	 * @return  object|WP_Error|array
-	 * 
-	 * The get_header( 'Authorization' ) checks for the header in the following order:
-	 * 1. HTTP_AUTHORIZATION
-	 * 2. REDIRECT_HTTP_AUTHORIZATION
+	 * @since 2.0.0
+	 * @param WP_REST_Request $request
+	 * @return mixed|WP_Error|null
 	 */
-    public function simplejwt_validate_token( WP_REST_Request $request, $custom_token = false ) {
-		$auth_header = $custom_token ? $custom_token : $request->get_header( 'Authorization' );
+	public function simplejwt_refresh_token( WP_REST_Request $request ) {
+		if ( ! $this->simplejwt_is_auth_enabled() ) {
+			return new WP_Error(
+				'simplejwt_bad_config',
+				JWTNotice::get_notice( 'auth_disabled' ),
+				array( 'status' => 403 )
+			);
+		}
+
+		$refresh = $request->get_param( 'refresh_token' );
+
+		if ( ! $refresh ) {
+			$refresh = $this->simplejwt_extract_bearer( $this->simplejwt_get_auth_header() );
+		}
+
+		if ( ! $refresh ) {
+			return new WP_Error(
+				'simplejwt_invalid_refresh_token',
+				JWTNotice::get_notice( 'invalid_refresh_token' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		if ( ! $this->simplejwt_rate_limit( 'refresh_' . TokenManager::hash_refresh_token( $refresh ) ) ) {
+			return new WP_Error(
+				'simplejwt_rate_limited',
+				JWTNotice::get_notice( 'rate_limited' ),
+				array( 'status' => 429 )
+			);
+		}
+
+		return $this->simplejwt_perform_refresh( $refresh );
+	}
+
+	/**
+	 * Revoke a refresh token (and its rotation family).
+	 *
+	 * @since 2.0.0
+	 * @param WP_REST_Request $request
+	 * @return mixed|WP_Error|null
+	 */
+	public function simplejwt_revoke_token( WP_REST_Request $request ) {
+		$refresh = $request->get_param( 'refresh_token' );
+
+		if ( ! $refresh ) {
+			$refresh = $this->simplejwt_extract_bearer( $this->simplejwt_get_auth_header() );
+		}
+
+		if ( ! $refresh ) {
+			return new WP_Error(
+				'simplejwt_invalid_refresh_token',
+				JWTNotice::get_notice( 'invalid_refresh_token' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		if ( ! $this->simplejwt_rate_limit( 'revoke_' . TokenManager::hash_refresh_token( $refresh ) ) ) {
+			return new WP_Error(
+				'simplejwt_rate_limited',
+				JWTNotice::get_notice( 'rate_limited' ),
+				array( 'status' => 429 )
+			);
+		}
+
+		$row = RefreshStore::find_by_hash( TokenManager::hash_refresh_token( $refresh ) );
+
+		if ( ! $row ) {
+			return new WP_Error(
+				'simplejwt_invalid_refresh_token',
+				JWTNotice::get_notice( 'invalid_refresh_token' ),
+				array( 'status' => 403 )
+			);
+		}
+
+		RefreshStore::revoke_family( $row['family_id'] );
+
+		return new WP_REST_Response(
+			array(
+				'code'    => 'simplejwt_token_revoked',
+				'message' => JWTNotice::get_notice( 'revoked_token' ),
+				'data'    => array( 'status' => 200 ),
+			),
+			200
+		);
+	}
+
+	/**
+	 * Validate an access token.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param WP_REST_Request $request
+	 *
+	 * @return object|WP_Error|array
+	 */
+	public function simplejwt_validate_token( WP_REST_Request $request ) {
+		$auth_header = $this->simplejwt_get_auth_header();
 
 		// If Authorization header not exist return an error.
-		if ( !$auth_header ) {
+		if ( ! $auth_header ) {
 			return new WP_Error(
 				'simplejwt_no_auth_header',
 				JWTNotice::get_notice( 'no_auth_header' ),
-				['status' => 403]
+				array( 'status' => 403 )
 			);
 		}
 
-		// Extract the authorization header.
-		[$token] = sscanf( $auth_header, 'Bearer %s' );
+		$token = $this->simplejwt_extract_bearer( $auth_header );
 
 		// If the format is not valid return an error.
-		if ( !$token ) {
+		if ( ! $token ) {
 			return new WP_Error(
 				'simplejwt_bad_auth_header',
 				JWTNotice::get_notice( 'bad_auth_header' ),
-				['status' => 400]
+				array( 'status' => 400 )
 			);
 		}
 
-		$algorithm = $this->simplejwt_get_algorithm();
-        
-        // Check algorithm if not exist return an error.
-        if ( !$algorithm ) {
-			return new WP_Error(
-				'simplejwt_unsupported_algorithm',
-				JWTNotice::get_notice( 'unsupported_algo' ),
-				['status' => 403]
-			);
+		$user_id = TokenManager::verify_access_token( $token );
+
+		if ( is_wp_error( $user_id ) ) {
+			return $user_id;
 		}
 
-		// Determine if we're using symmetric (HS*) or asymmetric algorithms.
-		$key_type = in_array( $algorithm, ['HS256', 'HS384', 'HS512'], true ) ? 'secret_key' : 'public_key';
-
-		// Get the `signing_key` from database based on key type.
-		$signing_key = DBManager::get_config( $key_type );
-
-		// Check the signing key if not exist return an error.
-		if ( $signing_key === false ) {
-			return new WP_Error(
-				'simplejwt_bad_' . $key_type,
-				JWTNotice::get_notice( 'bad_' . $key_type ),
-				['status' => 403]
-			);
-		}
-
-		// Decrypt secret key using `AES-256-GCM` algo.
-		$decode_key = Crypto::decrypt( 
-			sanitize_textarea_field( $signing_key )
-		);
-
-		// If there is WP_Error, return the error.
-		if ( is_wp_error( $decode_key ) ) {
-			return $decode_key;
-		}
-
-		// Decode the JWT token using try catch block
-		try {
-			$decoded_token = JWT::decode( $token, new Key( $decode_key, $algorithm ) );
-
-			// Validate the issuer from decoded token.
-			if ( $decoded_token->iss !== $this->simplejwt_get_iss() ) {
-				return new WP_Error(
-					'simplejwt_bad_issuer',
-					JWTNotice::get_notice( 'bad_issuer' ),
-					['status' => 403]
-				);
-			}
-
-			// No user id in the token, return error.
-			if ( !isset( $decoded_token->data->user->id ) ) {
-				return new WP_Error(
-					'simplejwt_bad_request',
-					JWTNotice::get_notice( 'bad_request' ),
-					['status' => 403]
-				);
-			}
-
-			// Everything looks good, return the decoded token.
-			if ( $custom_token ) {
-				return $decoded_token;
-			}
-
-			// Return successful response to `token/validate` endpoint.
-			return new WP_REST_Response( array(
+		// Return successful response to `token/validate` endpoint.
+		return new WP_REST_Response(
+			array(
 				'code'    => 'simplejwt_valid_token',
 				'message' => JWTNotice::get_notice( 'valid_token' ),
-				'data'    => ['status' => 200]
-			), 200 );
-		} catch ( Exception $e ) {
-			// Send error if Something were wrong trying to decode the token.
+				'data'    => array( 'status' => 200 ),
+			),
+			200
+		);
+	}
+
+	/**
+	 * Return the currently authenticated user's profile.
+	 *
+	 * @since 2.0.0
+	 * @param WP_REST_Request $request
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function simplejwt_me( WP_REST_Request $request ) {
+		$user_id = get_current_user_id();
+
+		if ( ! $user_id ) {
 			return new WP_Error(
-				'simplejwt_invalid_token',
-				wp_strip_all_tags( $e->getMessage() ),
-				['status' => 403]
+				'simplejwt_no_auth_header',
+				JWTNotice::get_notice( 'no_auth_header' ),
+				array( 'status' => 403 )
 			);
 		}
-    }
 
-    /**
+		$user = get_user_by( 'id', $user_id );
+
+		if ( ! $user ) {
+			return new WP_Error(
+				'simplejwt_bad_request',
+				JWTNotice::get_notice( 'bad_request' ),
+				array( 'status' => 403 )
+			);
+		}
+
+		return new WP_REST_Response(
+			array(
+				'code'    => 'simplejwt_user',
+				'message' => __( 'User data retrieved successfully', 'simple-jwt-auth' ),
+				'data'    => array(
+					'status'       => 200,
+					'id'           => $user->ID,
+					'email'        => $user->user_email,
+					'nicename'     => $user->user_nicename,
+					'display_name' => $user->display_name,
+					'roles'        => array_values( $user->roles ),
+				),
+			),
+			200
+		);
+	}
+
+	/**
 	 * This Middleware to try to authenticate the user according to token send.
-	 * 
+	 *
 	 * This hook only should run on the REST API requests to authenticate
-	 * if the user Token is valid, for any other normal call ex. wp-admin/.* 
+	 * if the user Token is valid, for any other normal call ex. wp-admin/.*
 	 * return the user.
 	 *
 	 * @since   1.0.0
-	 * @param	int|bool $current_user
+	 * @param   int|bool $current_user
 	 * @return  int|bool
 	 */
-    public function simplejwt_determine_current_user( $current_user ) {
+	public function simplejwt_determine_current_user( $current_user ) {
 		$rest_api_slug = rest_get_url_prefix();
-		$requested_uri = !empty( $_SERVER['REQUEST_URI'] ) ? sanitize_url( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+		$requested_uri = ! empty( $_SERVER['REQUEST_URI'] ) ? sanitize_url( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
 
 		// If already valid user, or have an invalid url, don't attempt to validate token.
 		$is_rest_defined = defined( 'REST_REQUEST' ) && REST_REQUEST;
-		$is_rest_request = $is_rest_defined || strpos( $requested_uri, $rest_api_slug );
+		$is_rest_request = $is_rest_defined || ( false !== strpos( $requested_uri, $rest_api_slug ) );
 
 		if ( $is_rest_request && $current_user ) {
-			return $current_user ;
+			return $current_user;
 		}
 
-		// If the request URI is for validate the token don't do anything.
-		$validate_uri = strpos( $requested_uri, 'token/validate' );
-		if ( $validate_uri > 0 ) {
-			$current_user;
+		// The /token/validate endpoint handles its own bearer token; skip middleware auth.
+		if ( $is_rest_request && false !== strpos( $requested_uri, 'token/validate' ) ) {
+			return $current_user;
+		}
+
+		// Respect the enable_auth toggle.
+		if ( ! $this->simplejwt_is_auth_enabled() ) {
+			return $current_user;
 		}
 
 		// Get the Authorization header and check for the token.
-		$auth_header = !empty( $_SERVER['HTTP_AUTHORIZATION'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_AUTHORIZATION'] ) ) : false;
+		$auth_header = $this->simplejwt_get_auth_header();
 
-		if ( !$auth_header ) {
-			$auth_header = !empty( $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ) ) : false;
-		}
-
-		if ( !$auth_header ) {
+		if ( '' === $auth_header || 0 !== strpos( $auth_header, 'Bearer' ) ) {
 			return $current_user;
 		}
 
-		// Check if the auth header is not bearer.
-		if ( strpos( $auth_header, 'Bearer' ) !== 0 ) {
+		$token = $this->simplejwt_extract_bearer( $auth_header );
+
+		if ( '' === $token ) {
 			return $current_user;
 		}
 
-		// Check the token from the headers.
-		$token = $this->simplejwt_validate_token( new WP_REST_Request(), $auth_header );
+		$user_id = TokenManager::verify_access_token( $token );
 
-		if ( is_wp_error( $token ) ) {
-			if ( $token->get_error_code() != 'simplejwt_no_auth_header' ) {
-				$this->jwt_error = $token;
+		if ( is_wp_error( $user_id ) ) {
+			if ( $user_id->get_error_code() !== 'simplejwt_no_auth_header' ) {
+				$this->jwt_error = $user_id;
 			}
 
 			return $current_user;
 		}
 
 		// Everything is ok, return the user ID from token.
-		return $token->data->user->id;
-    }
+		return $user_id;
+	}
 
 	/**
 	 * Filter to hook the rest_pre_dispatch, if the is an error in the request
 	 * send it, if there is no error just continue with the current request.
-	 * 
-	 * @param	$request
-	 * @return	mixed|WP_Error|null
+	 *
+	 * @param   $request
+	 * @return  mixed|WP_Error|null
 	 */
 	public function simplejwt_rest_pre_dispatch( $request ) {
 		if ( is_wp_error( $this->jwt_error ) ) {
 			return $this->jwt_error;
 		}
-		
+
 		return $request;
 	}
 
 	/**
-	 * Defined the token issuer (iss) filter hook.
-	 * 
-	 * @since	1.0.0
-	 * @return	string
+	 * Revoke all refresh tokens for the user on logout.
+	 *
+	 * @since 2.0.0
+	 * @param int $user_id
 	 */
-	private function simplejwt_get_iss() {
-		return apply_filters( 'simplejwt_auth_iss', get_bloginfo( 'url' ) );
+	public function simplejwt_revoke_all_on_logout( $user_id = 0 ) {
+		$user_id = $user_id ? (int) $user_id : get_current_user_id();
+
+		if ( $user_id ) {
+			RefreshStore::revoke_all_for_user( $user_id );
+		}
 	}
 
-    /**
-	 * Get the algorithm used to sign the token from database and validate
-	 * that the algorithm is in the supported list.
-     * 
-     * @since   1.0.0
-	 * @return	bool|string
+	/**
+	 * Revoke all refresh tokens for the user on password reset.
+	 *
+	 * @since 2.0.0
+	 * @param \WP_User $user
+	 * @param string   $new_pass
 	 */
-    private function simplejwt_get_algorithm() {
-		$algorithm = DBManager::get_config( 'algorithm' );
+	public function simplejwt_revoke_all_on_password_reset( $user, $new_pass ) {
+		if ( $user instanceof WP_User ) {
+			RefreshStore::revoke_all_for_user( $user->ID );
+		}
+	}
 
-        if ( !empty( $algorithm ) ) {
-            if ( !in_array( $algorithm, $this->supported_algos ) ) {
-                return false;
-            }
-        }
-		
-		return $algorithm;
+	/**
+	 * Issue and persist a new refresh token for a user.
+	 *
+	 * @since 2.0.0
+	 * @param int $user_id
+	 * @return string|WP_Error The raw refresh token, or an error.
+	 */
+	private function simplejwt_issue_refresh_token( int $user_id ) {
+		$raw    = TokenManager::generate_refresh_token();
+		$hash   = TokenManager::hash_refresh_token( $raw );
+		$family = TokenManager::generate_family_id();
+
+		$stored = RefreshStore::store( $user_id, $hash, $family, TokenManager::get_refresh_ttl() );
+
+		if ( ! $stored ) {
+			return new WP_Error(
+				'simplejwt_token_creation_error',
+				JWTNotice::get_notice( 'unknown_error' ),
+				array( 'status' => 500 )
+			);
+		}
+
+		return $raw;
+	}
+
+	/**
+	 * Perform the refresh-token rotation flow.
+	 *
+	 * @since 2.0.0
+	 * @param string $raw_refresh The raw refresh token.
+	 * @return WP_REST_Response|WP_Error
+	 */
+	private function simplejwt_perform_refresh( string $raw_refresh ) {
+		$hash = TokenManager::hash_refresh_token( $raw_refresh );
+		$row  = RefreshStore::find_by_hash( $hash );
+
+		if ( ! $row ) {
+			return new WP_Error(
+				'simplejwt_invalid_refresh_token',
+				JWTNotice::get_notice( 'invalid_refresh_token' ),
+				array( 'status' => 403 )
+			);
+		}
+
+		if ( $row['revoked'] ) {
+			// A manually revoked token (e.g. via /token/revoke or logout) has no
+			// `rotated_at`; reject it directly without triggering reuse detection.
+			if ( empty( $row['rotated_at'] ) ) {
+				return new WP_Error(
+					'simplejwt_revoked_token',
+					JWTNotice::get_notice( 'revoked_token' ),
+					array( 'status' => 403 )
+				);
+			}
+
+			// A rotated token replayed inside the grace window is a benign
+			// concurrent retry; outside the window it is treated as theft.
+			$is_grace = ( time() - strtotime( $row['rotated_at'] ) ) <= TokenManager::GRACE_WINDOW;
+
+			if ( ! $is_grace ) {
+				RefreshStore::revoke_family( $row['family_id'] );
+
+				/**
+				 * Fired when refresh-token reuse (theft) is detected and a family is revoked.
+				 *
+				 * @since 2.0.0
+				 * @param int    $user_id   The user id.
+				 * @param string $family_id The revoked rotation family id.
+				 * @param string $ip        The client IP address.
+				 */
+				do_action( 'simplejwt_auth_token_reuse_detected', (int) $row['user_id'], $row['family_id'], $this->simplejwt_client_ip() );
+
+				return new WP_Error(
+					'simplejwt_reused_refresh_token',
+					JWTNotice::get_notice( 'reused_refresh_token' ),
+					array( 'status' => 403 )
+				);
+			}
+		}
+
+		if ( strtotime( $row['expires_at'] ) < time() ) {
+			return new WP_Error(
+				'simplejwt_expired_token',
+				JWTNotice::get_notice( 'expired_token' ),
+				array( 'status' => 403 )
+			);
+		}
+
+		$user = get_user_by( 'id', (int) $row['user_id'] );
+
+		if ( ! $user ) {
+			return new WP_Error(
+				'simplejwt_invalid_refresh_token',
+				JWTNotice::get_notice( 'invalid_refresh_token' ),
+				array( 'status' => 403 )
+			);
+		}
+
+		$access = TokenManager::issue_access_token( $user );
+
+		if ( is_wp_error( $access ) ) {
+			return $access;
+		}
+
+		$new_raw  = TokenManager::generate_refresh_token();
+		$new_hash = TokenManager::hash_refresh_token( $new_raw );
+
+		$rotated = RefreshStore::rotate( $hash, $new_hash, $row['family_id'], TokenManager::get_refresh_ttl() );
+
+		if ( ! $rotated ) {
+			return new WP_Error(
+				'simplejwt_token_creation_error',
+				JWTNotice::get_notice( 'unknown_error' ),
+				array( 'status' => 500 )
+			);
+		}
+
+		return $this->simplejwt_token_response( $user, $access, $new_raw );
+	}
+
+	/**
+	 * Build the standard token response envelope.
+	 *
+	 * @since 2.0.0
+	 * @param \WP_User $user
+	 * @param string   $access
+	 * @param string   $refresh
+	 * @return WP_REST_Response
+	 */
+	private function simplejwt_token_response( WP_User $user, string $access, string $refresh ) {
+		$data = new WP_REST_Response(
+			array(
+				'code'    => 'simplejwt_auth_credential',
+				'message' => JWTNotice::get_notice( 'auth_credential' ),
+				'data'    => array(
+					'status'             => 200,
+					'id'                 => $user->ID,
+					'email'              => $user->user_email,
+					'nicename'           => $user->user_nicename,
+					'display_name'       => $user->display_name,
+					'token'              => $access,
+					'token_expires_in'   => TokenManager::get_access_ttl(),
+					'refresh_token'      => $refresh,
+					'refresh_expires_in' => TokenManager::get_refresh_ttl(),
+				),
+			),
+			200
+		);
+
+		// Let the user modify the data before send it back using `add_filter`.
+		return apply_filters( 'simplejwt_token_before_dispatch', $data, $user );
+	}
+
+	/**
+	 * Whether JWT authentication is enabled.
+	 *
+	 * @since 2.0.0
+	 * @return bool
+	 */
+	private function simplejwt_is_auth_enabled() {
+		return filter_var( DBManager::get_config( 'enable_auth' ), FILTER_VALIDATE_BOOLEAN );
+	}
+
+	/**
+	 * Read the Authorization header (handles Apache/REDIRECT variants).
+	 *
+	 * @since 2.0.0
+	 * @return string
+	 */
+	private function simplejwt_get_auth_header() {
+		$auth = ! empty( $_SERVER['HTTP_AUTHORIZATION'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_AUTHORIZATION'] ) ) : '';
+
+		if ( ! $auth ) {
+			$auth = ! empty( $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ) ) : '';
+		}
+
+		return $auth;
+	}
+
+	/**
+	 * Extract the token from a `Bearer <token>` header value.
+	 *
+	 * @since 2.0.0
+	 * @param string $auth_header
+	 * @return string
+	 */
+	private function simplejwt_extract_bearer( string $auth_header ) {
+		if ( '' === $auth_header || 0 !== strpos( $auth_header, 'Bearer' ) ) {
+			return '';
+		}
+
+		list( $token ) = sscanf( $auth_header, 'Bearer %s' );
+
+		return $token ? $token : '';
+	}
+
+	/**
+	 * A basic transient-backed rate limiter (deterrent, not a robust defense).
+	 *
+	 * @since 2.0.0
+	 * @param string $identifier A stable identifier for the operation.
+	 * @return bool True if the request is allowed, false if it should be blocked.
+	 */
+	private function simplejwt_rate_limit( string $identifier ) {
+		$max    = (int) apply_filters( 'simplejwt_rate_limit_max', 10 );
+		$window = (int) apply_filters( 'simplejwt_rate_limit_window', MINUTE_IN_SECONDS );
+
+		$key   = 'simplejwt_rl_' . md5( $identifier );
+		$count = get_transient( $key );
+
+		if ( false === $count ) {
+			set_transient( $key, 1, $window );
+
+			return true;
+		}
+
+		if ( (int) $count >= $max ) {
+			return false;
+		}
+
+		set_transient( $key, (int) $count + 1, $window );
+
+		return true;
+	}
+
+	/**
+	 * Best-effort client IP address.
+	 *
+	 * @since 2.0.0
+	 * @return string
+	 */
+	private function simplejwt_client_ip() {
+		return isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
 	}
 }

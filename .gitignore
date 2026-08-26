@@ -1,3 +1,5 @@
 .vscode
 .DS_Store
-includes/vendor/bin
+.opencode/
+includes/vendor
+dist/
