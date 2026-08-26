@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<ruleset name="Simple JWT Auth">
+	<description>WordPress Coding Standards (core + extra) and PHPCompatibility for Simple JWT Auth.</description>
+
+	<arg name="extensions" value="php"/>
+	<file>.</file>
+
+	<exclude-pattern>includes/vendor/**</exclude-pattern>
+	<exclude-pattern>bin/**</exclude-pattern>
+	<exclude-pattern>tests/fixtures/**</exclude-pattern>
+
+	<config name="testVersion" value="8.2-"/>
+
+	<!--
+	WordPress core + extra safety rules and PHPCompatibility. The
+	WordPress-Docs ruleset is intentionally not loaded: the plugin's legacy
+	code was never fully docblock-compliant and enforcing it now would drown
+	the report in style noise without adding safety value.
+	-->
+	<rule ref="WordPress-Core"/>
+	<rule ref="WordPress-Extra"/>
+	<rule ref="PHPCompatibility"/>
+
+	<!--
+	Intentional deviations from style-only sniffs. The plugin's namespaced
+	`class-simple-jwt-auth-*` file naming convention, the multi-class JWT
+	wrapper, the legacy `Simple_Jwt_Auth_i18n` class name, non-Yoda
+	conditions, loose `==` comparisons in templates, and the admin redirect
+	flow are retained as-is.
+	-->
+	<rule ref="WordPress.PHP.YodaConditions"><severity>0</severity></rule>
+	<rule ref="WordPress.Files.FileName"><severity>0</severity></rule>
+	<rule ref="Generic.Files.OneObjectStructurePerFile"><severity>0</severity></rule>
+	<rule ref="PEAR.NamingConventions"><severity>0</severity></rule>
+	<rule ref="Universal.Operators.StrictComparisons"><severity>0</severity></rule>
+	<rule ref="Universal.ControlStructures.DisallowLonelyIf"><severity>0</severity></rule>
+	<rule ref="WordPress.Security.SafeRedirect"><severity>0</severity></rule>
+	<rule ref="WordPress.WP.GlobalVariablesOverride"><severity>0</severity></rule>
+</ruleset>
