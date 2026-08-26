@@ -1,7 +1,7 @@
-=== Simple JWT Auth – JWT Authentication for WordPress REST API ===
+=== Simple JWT Auth – JWT Authentication for WP REST API ===
 Contributors: sayandey18
 Donate link: https://github.com/sayandey18
-Tags: jwt authentication, jwt, json web token, rest api, rest api authentication, authentication, headless, headless cms, api, token, access token, refresh token
+Tags: jwt, jwt authentication, rest-api, oauth, wp-api
 Requires at least: 7.0
 Tested up to: 7.1
 Stable tag: 2.0.0
@@ -52,27 +52,27 @@ HTTP Authorization is the mechanism clients use to send credentials to a server 
 
 Add the following to your `.htaccess` file:
 
-```
+`
 RewriteEngine on
 RewriteCond %{HTTP:Authorization} ^(.*)
 RewriteRule ^(.*) - [E=HTTP_AUTHORIZATION:%1]
-```
+`
 
 = WP Engine =
 
 Add the following to your `.htaccess` file:
 
-```
+`
 SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
-```
+`
 
 == Configuration ==
 
 Simple JWT Auth uses a **Key-Encryption-Key (KEK)** to encrypt and decrypt the JWT signing keys (`secret_key`, `private_key`, and `public_key`) at rest. Define it in `wp-config.php` with the `SIMPLE_JWT_AUTH_ENCRYPT_KEY` constant. The KEK must be exactly 32 characters long and must never be revealed.
 
-```
+`
 define( 'SIMPLE_JWT_AUTH_ENCRYPT_KEY', 'your-32-char-encryption-key' );
-```
+`
 
 Rotating the KEK invalidates the stored signing keys and requires re-entering them in the plugin settings (a `simplejwt_kek_mismatch` error is returned until then).
 
@@ -80,12 +80,12 @@ Rotating the KEK invalidates the stored signing keys and requires re-entering th
 
 Instead of storing signing keys in the database, define them directly in `wp-config.php`. Constants take precedence over the plugin settings, and their values are used as-is (plaintext, not encrypted).
 
-```
+`
 define( 'SIMPLE_JWT_AUTH_ALGORITHM', 'HS256' );            // HS256, HS384, HS512, RS256, RS384, RS512, ES256 or ES384.
 define( 'SIMPLE_JWT_AUTH_SECRET_KEY', 'your-secret-key' ); // Required for HS* algorithms (min 32 chars).
 define( 'SIMPLE_JWT_AUTH_PRIVATE_KEY', '-----BEGIN PRIVATE KEY-----...' ); // Required for RS*/ES* signing.
 define( 'SIMPLE_JWT_AUTH_PUBLIC_KEY', '-----BEGIN PUBLIC KEY-----...' );   // Required for RS*/ES* verification.
-```
+`
 
 | Constant | Overrides | Used for |
 |----------|-----------|----------|
@@ -116,18 +116,18 @@ The plugin registers the `auth/v1` namespace with five endpoints:
 
 Submit a `POST` request with `username` and `password`:
 
-```
+`
 curl --location 'https://example.com/wp-json/auth/v1/token' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "username": "wordpress_username",
     "password": "wordpress_password"
 }'
-```
+`
 
 Success response:
 
-```
+`
 {
     "code": "simplejwt_auth_credential",
     "message": "Token created successfully",
@@ -143,17 +143,17 @@ Success response:
         "refresh_expires_in": 1209600
     }
 }
-```
+`
 
 Store the access token and refresh token in your application (a secure cookie, `localStorage`, or a wrapper such as [localForage](https://localforage.github.io/localForage/)). Then pass the access token as a Bearer header on every protected request:
 
-```
+`
 Authorization: Bearer your-access-token
-```
+`
 
 For example, creating a post with an access token:
 
-```
+`
 curl --location 'https://example.com/wp-json/wp/v2/posts' \
 --header 'Content-Type: application/json' \
 --header 'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOi...' \
@@ -162,17 +162,17 @@ curl --location 'https://example.com/wp-json/wp/v2/posts' \
     "content": "Created through the REST API with JWT authentication.",
     "status": "publish"
 }'
-```
+`
 
 = Refresh a token =
 
 Access tokens are short-lived. When one expires, send the refresh token to `/token/refresh` (in the body or as a Bearer header) to rotate it and receive a new access token and refresh token:
 
-```
+`
 curl --location 'https://example.com/wp-json/auth/v1/token/refresh' \
 --header 'Content-Type: application/json' \
 --data-raw '{ "refresh_token": "opaque-refresh-token" }'
-```
+`
 
 The response has the same shape as the token response. Each rotation invalidates the previous refresh token.
 
@@ -180,53 +180,53 @@ The response has the same shape as the token response. Each rotation invalidates
 
 To invalidate a session, send the refresh token to `/token/revoke`:
 
-```
+`
 curl --location 'https://example.com/wp-json/auth/v1/token/revoke' \
 --header 'Content-Type: application/json' \
 --data-raw '{ "refresh_token": "opaque-refresh-token" }'
-```
+`
 
 Success response:
 
-```
+`
 {
     "code": "simplejwt_token_revoked",
     "message": "Token has been revoked",
     "data": { "status": 200 }
 }
-```
+`
 
 = Validate a token =
 
 Verify an access token with a `POST` request carrying the Bearer header:
 
-```
+`
 curl --location --request POST 'https://example.com/wp-json/auth/v1/token/validate' \
 --header 'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOi...'
-```
+`
 
 Success response:
 
-```
+`
 {
     "code": "simplejwt_valid_token",
     "message": "Token is valid",
     "data": { "status": 200 }
 }
-```
+`
 
 = Current user =
 
 Get the authenticated user's profile:
 
-```
+`
 curl --location 'https://example.com/wp-json/auth/v1/me' \
 --header 'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOi...'
-```
+`
 
 Success response:
 
-```
+`
 {
     "code": "simplejwt_user",
     "message": "User data retrieved successfully",
@@ -239,7 +239,7 @@ Success response:
         "roles": ["administrator"]
     }
 }
-```
+`
 
 == REST Errors ==
 
@@ -273,91 +273,91 @@ Simple JWT Auth is developer-friendly and exposes filter and action hooks to ove
 
 Modify the CORS `Access-Control-Allow-Headers` value. Default: `Access-Control-Allow-Headers, Content-Type, Authorization`.
 
-```
+`
 add_filter( 'simplejwt_cors_allow_headers', function ( $headers ) {
     return $headers;
 } );
-```
+`
 
 = simplejwt_auth_iss (filter) =
 
 Change the token `iss` (issuer) claim. Default: `get_bloginfo( 'url' )`.
 
-```
+`
 add_filter( 'simplejwt_auth_iss', function ( $iss ) {
     return $iss;
 } );
-```
+`
 
 = simplejwt_not_before (filter) =
 
 Change the token `nbf` (not-before) claim. Default: the issue time.
 
-```
+`
 add_filter( 'simplejwt_not_before', function ( $not_before, $issued_at ) {
     return $not_before;
 }, 10, 2 );
-```
+`
 
 = simplejwt_auth_expire (filter) =
 
 Change the token `exp` (expiry) claim. Default: `time() + access token lifetime` (900 seconds by default).
 
-```
+`
 add_filter( 'simplejwt_auth_expire', function ( $expire, $issued_at ) {
     return $expire;
 }, 10, 2 );
-```
+`
 
 = simplejwt_payload_before_sign (filter) =
 
 Modify the JWT payload before it is signed. The payload contains the `iss`, `iat`, `nbf`, `exp`, `sub`, and `jti` claims (plus the legacy `data.user.id`).
 
-```
+`
 add_filter( 'simplejwt_payload_before_sign', function ( $payload, $user ) {
     return $payload;
 }, 10, 2 );
-```
+`
 
 = simplejwt_token_before_dispatch (filter) =
 
 Modify the token response before it is returned to the client. The response includes the access token, refresh token, and their lifetimes.
 
-```
+`
 add_filter( 'simplejwt_token_before_dispatch', function ( $data, $user ) {
     return $data;
 }, 10, 2 );
-```
+`
 
 = simplejwt_auth_token_reuse_detected (action) =
 
 Fired when refresh-token reuse is detected and a token family is revoked. Arguments: `$user_id`, `$family_id`, `$ip`.
 
-```
+`
 add_action( 'simplejwt_auth_token_reuse_detected', function ( $user_id, $family_id, $ip ) {
     // Alert, log, or revoke further sessions here.
 }, 10, 3 );
-```
+`
 
 = simplejwt_rate_limit_max (filter) =
 
 Change the maximum number of attempts allowed within the rate-limit window. Default: `10`.
 
-```
+`
 add_filter( 'simplejwt_rate_limit_max', function ( $max ) {
     return $max;
 } );
-```
+`
 
 = simplejwt_rate_limit_window (filter) =
 
 Change the rate-limit window, in seconds. Default: `MINUTE_IN_SECONDS` (60).
 
-```
+`
 add_filter( 'simplejwt_rate_limit_window', function ( $window ) {
     return $window;
 } );
-```
+`
 
 == Postman Collection ==
 
