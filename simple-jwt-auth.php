@@ -11,8 +11,10 @@
  * Plugin Name:       Simple JWT Auth
  * Plugin URI:        https://github.com/sayandey18/simple-jwt-auth
  * Description:       Extends the WordPress REST API using JSON Web Tokens for robust authentication and authorization. It provides a secure and reliable way to access and manage WordPress data from external applications, making it ideal for building headless CMS solutions.
- * Version:           1.0.2
- * Requires PHP:      7.4
+ * Version:           2.0.0
+ * Requires at least: 7.0
+ * Tested up to:      7.1
+ * Requires PHP:      8.2
  * Author:            Sayan Dey
  * Author URI:        https://github.com/sayandey18
  * License:           GPL v2 or later
@@ -22,7 +24,7 @@
  */
 
 // If this file is called directly, abort.
-if ( !defined( 'WPINC' ) ) {
+if ( ! defined( 'WPINC' ) ) {
 	die;
 }
 
@@ -31,7 +33,14 @@ if ( !defined( 'WPINC' ) ) {
  * Start at version 1.0.0 and use SemVer - https://semver.org
  * Rename this for your plugin and update it as you release new versions.
  */
-define( 'SIMPLE_JWT_AUTH_VERSION', '1.0.2' );
+define( 'SIMPLE_JWT_AUTH_VERSION', '2.0.0' );
+
+/**
+ * Define the REST API namespace version. Decoupled from the plugin version so
+ * that a semver bump (e.g. 2.0.0) does not silently change the `auth/v1` route
+ * namespace. Bump only when a breaking route change is introduced.
+ */
+define( 'SIMPLE_JWT_AUTH_API_VERSION', '1' );
 
 /**
  * Define the other required options.
@@ -74,7 +83,7 @@ require plugin_dir_path( __FILE__ ) . 'includes/class-simple-jwt-auth.php';
  * then kicking off the plugin from this point in the file does
  * not affect the page life cycle.
  *
- * @since	1.0.0
+ * @since   1.0.0
  */
 function simplejwt_auth_run() {
 	$plugin = new Simple_Jwt_Auth();

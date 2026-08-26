@@ -1,22 +1,22 @@
-# Copyright (C) 2024 Sayan Dey
+# Copyright (C) 2026 Sayan Dey
 # This file is distributed under the GPL v2 or later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Simple JWT Auth 1.0.0\n"
+"Project-Id-Version: Simple JWT Auth 2.0.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/simple-jwt-auth\n"
 "Last-Translator: Sayan Dey <mr.sayandey18@outlook.com>\n"
 "Language-Team: Sayan Dey <mr.sayandey18@outlook.com>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2024-10-05T08:05:52+00:00\n"
+"POT-Creation-Date: 2026-08-26T13:17:14+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"X-Generator: WP-CLI 2.11.0\n"
+"X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: simple-jwt-auth\n"
 
 #. Plugin Name of the plugin
 #: simple-jwt-auth.php
-#: admin/class-simple-jwt-auth-admin.php:103
+#: admin/class-simple-jwt-auth-admin.php:98
 msgid "Simple JWT Auth"
 msgstr ""
 
@@ -40,155 +40,287 @@ msgstr ""
 msgid "https://github.com/sayandey18"
 msgstr ""
 
-#: admin/class-simple-jwt-auth-admin.php:104
+#: admin/class-simple-jwt-auth-admin.php:99
 msgid "JWT Auth"
 msgstr ""
 
-#: admin/class-simple-jwt-auth-admin.php:114
+#: admin/class-simple-jwt-auth-admin.php:109
 msgid "JWT Auth Settings"
 msgstr ""
 
-#: admin/class-simple-jwt-auth-admin.php:115
-#: admin/class-simple-jwt-auth-admin.php:173
+#: admin/class-simple-jwt-auth-admin.php:110
+#: admin/class-simple-jwt-auth-admin.php:358
 msgid "Settings"
 msgstr ""
 
-#: admin/class-simple-jwt-auth-admin.php:124
+#: admin/class-simple-jwt-auth-admin.php:119
 msgid "JWT Auth Options"
 msgstr ""
 
-#: admin/class-simple-jwt-auth-admin.php:125
-#: admin/partials/simple-jwt-auth-admin-options.php:27
-#: admin/partials/simple-jwt-auth-admin-settings.php:56
+#: admin/class-simple-jwt-auth-admin.php:120
+#: admin/partials/simple-jwt-auth-admin-docs.php:38
+#: admin/partials/simple-jwt-auth-admin-options.php:32
+#: admin/partials/simple-jwt-auth-admin-settings.php:61
 msgid "Options"
 msgstr ""
 
-#: admin/class-simple-jwt-auth-admin.php:172
-msgid "Go to JWT Settings page"
+#: admin/class-simple-jwt-auth-admin.php:129
+msgid "JWT Auth Documentation"
 msgstr ""
 
-#: admin/class-simple-jwt-auth-admin.php:330
-#: admin/class-simple-jwt-auth-admin.php:363
+#: admin/class-simple-jwt-auth-admin.php:130
+#: admin/partials/simple-jwt-auth-admin-docs.php:43
+#: admin/partials/simple-jwt-auth-admin-options.php:37
+#: admin/partials/simple-jwt-auth-admin-settings.php:66
+msgid "Documentation"
+msgstr ""
+
+#: admin/class-simple-jwt-auth-admin.php:186
+#: admin/class-simple-jwt-auth-admin.php:543
+#: admin/class-simple-jwt-auth-admin.php:589
 msgid "Invalid nonce specified!"
 msgstr ""
 
-#: admin/class-simple-jwt-auth-admin.php:331
-#: admin/class-simple-jwt-auth-admin.php:364
+#: admin/class-simple-jwt-auth-admin.php:186
+#: admin/class-simple-jwt-auth-admin.php:190
+#: admin/class-simple-jwt-auth-admin.php:423
+#: admin/class-simple-jwt-auth-admin.php:544
+#: admin/class-simple-jwt-auth-admin.php:565
+#: admin/class-simple-jwt-auth-admin.php:590
 msgid "JWT Error"
 msgstr ""
 
-#: admin/class-simple-jwt-auth-admin.php:494
+#: admin/class-simple-jwt-auth-admin.php:190
+#: admin/class-simple-jwt-auth-admin.php:422
+#: admin/class-simple-jwt-auth-admin.php:564
+msgid "You are not allowed to do this."
+msgstr ""
+
+#: admin/class-simple-jwt-auth-admin.php:357
+msgid "Go to JWT Settings page"
+msgstr ""
+
+#. translators: %s: link to the plugin settings page.
+#: admin/class-simple-jwt-auth-admin.php:703
+#, php-format
+msgid "Simple JWT Auth: authentication is now enforced and has been automatically enabled based on your existing signing keys. <a href=\"%s\">Review your settings</a>."
+msgstr ""
+
+#: admin/class-simple-jwt-auth-admin.php:768
 msgid "Website is running on the latest version."
 msgstr ""
 
 #. translators: %s is the latest WordPress/PHP version to update.
-#: admin/class-simple-jwt-auth-admin.php:498
-#: admin/class-simple-jwt-auth-admin.php:510
+#: admin/class-simple-jwt-auth-admin.php:772
+#: admin/class-simple-jwt-auth-admin.php:784
+#, php-format
 msgid "Update to %s is recommended."
 msgstr ""
 
-#: admin/class-simple-jwt-auth-admin.php:499
+#: admin/class-simple-jwt-auth-admin.php:773
 msgid "An update is available for your WordPress installation."
 msgstr ""
 
-#: admin/class-simple-jwt-auth-admin.php:506
+#: admin/class-simple-jwt-auth-admin.php:780
 msgid "Website is running on the recommended version."
 msgstr ""
 
-#: admin/class-simple-jwt-auth-admin.php:511
+#: admin/class-simple-jwt-auth-admin.php:785
 msgid "Various updates and fixes are available in the newest version."
 msgstr ""
 
-#: admin/partials/simple-jwt-auth-admin-options.php:22
-#: admin/partials/simple-jwt-auth-admin-settings.php:51
+#: admin/partials/simple-jwt-auth-admin-docs.php:33
+#: admin/partials/simple-jwt-auth-admin-options.php:27
+#: admin/partials/simple-jwt-auth-admin-settings.php:56
 msgid "JWT Settings"
 msgstr ""
 
-#: admin/partials/simple-jwt-auth-admin-options.php:55
-msgid "Deleting Data"
+#: admin/partials/simple-jwt-auth-admin-docs.php:68
+msgid "Setup"
 msgstr ""
 
-#: admin/partials/simple-jwt-auth-admin-options.php:58
-msgid "Remove configs data"
+#: admin/partials/simple-jwt-auth-admin-docs.php:70
+msgid "1. Add the key-encryption-key to your wp-config.php file (must be exactly 32 characters)."
 msgstr ""
 
-#: admin/partials/simple-jwt-auth-admin-options.php:59
-msgid "Checking this box will permanently delete all JWT authentication tables and data while uninstalling, which is irreversible and cannot be recovered."
+#: admin/partials/simple-jwt-auth-admin-docs.php:73
+msgid "2. (Optional) Define the signing algorithm and keys as constants to override the values stored in the plugin settings."
 msgstr ""
 
-#: admin/partials/simple-jwt-auth-admin-settings.php:83
-msgid "WordPress Version"
+#: admin/partials/simple-jwt-auth-admin-docs.php:79
+msgid "3. If the Authorization header is not available on your host, add the following to your .htaccess file."
 msgstr ""
 
-#: admin/partials/simple-jwt-auth-admin-settings.php:101
-msgid "PHP Version"
+#: admin/partials/simple-jwt-auth-admin-docs.php:87
+msgid "API Endpoints"
 msgstr ""
 
-#: admin/partials/simple-jwt-auth-admin-settings.php:123
-msgid "Authencation"
+#: admin/partials/simple-jwt-auth-admin-docs.php:92
+msgid "Endpoint"
 msgstr ""
 
-#: admin/partials/simple-jwt-auth-admin-settings.php:126
-msgid "Enable JWT"
+#: admin/partials/simple-jwt-auth-admin-docs.php:93
+msgid "Method"
 msgstr ""
 
-#: admin/partials/simple-jwt-auth-admin-settings.php:127
-msgid "Secure and reliable way to verify user identity and access control."
+#: admin/partials/simple-jwt-auth-admin-docs.php:94
+msgid "Description"
 msgstr ""
 
-#: admin/partials/simple-jwt-auth-admin-settings.php:140
-msgid "Choose Algorithm"
+#: admin/partials/simple-jwt-auth-admin-docs.php:101
+msgid "Generate an access and refresh token."
 msgstr ""
 
-#: admin/partials/simple-jwt-auth-admin-settings.php:155
-msgid "Enter your secret key"
+#: admin/partials/simple-jwt-auth-admin-docs.php:106
+msgid "Rotate an access and refresh token."
 msgstr ""
 
-#: admin/partials/simple-jwt-auth-admin-settings.php:165
-msgid "*Generate a secure JSON Web Token signing keys using OpenSSL from here"
+#: admin/partials/simple-jwt-auth-admin-docs.php:111
+msgid "Revoke a refresh token."
 msgstr ""
 
-#: admin/partials/simple-jwt-auth-admin-settings.php:173
-msgid "Endpoints"
+#: admin/partials/simple-jwt-auth-admin-docs.php:116
+msgid "Validate an access token."
 msgstr ""
 
-#: admin/partials/simple-jwt-auth-admin-settings.php:174
-msgid "List of endpoint URLs that can be used to interact with the API, allowing you to perform various actions and retrieve data, enabling you to access and utilize the API's functionalities."
+#: admin/partials/simple-jwt-auth-admin-docs.php:121
+msgid "Return the authenticated user."
 msgstr ""
 
-#: admin/partials/simple-jwt-auth-admin-settings.php:176
-msgid "Generate JWT token"
+#: admin/partials/simple-jwt-auth-admin-docs.php:126
+msgid "Generate a token by sending your WordPress credentials."
 msgstr ""
 
-#: admin/partials/simple-jwt-auth-admin-settings.php:181
-msgid "Validate JWT token"
+#: admin/partials/simple-jwt-auth-admin-docs.php:131
+msgid "Then pass the token as a Bearer header to every protected request."
 msgstr ""
 
-#: admin/partials/simple-jwt-auth-admin-settings.php:190
-msgid "CORS Support"
+#: admin/partials/simple-jwt-auth-admin-docs.php:136
+msgid "Download Postman Collection"
 msgstr ""
 
-#: admin/partials/simple-jwt-auth-admin-settings.php:193
-msgid "Enable CORS"
+#: admin/partials/simple-jwt-auth-admin-docs.php:137
+msgid "Import the downloaded JSON into Postman (Import → Upload files or Link) to try the endpoints with your site URL preconfigured."
 msgstr ""
 
-#: admin/partials/simple-jwt-auth-admin-settings.php:194
-msgid "CORS is an HTTP-header based mechanism that allows a web page to make requests to a server on a different domain than the one that served the web page."
-msgstr ""
-
-#: admin/partials/simple-jwt-auth-admin-settings.php:205
+#: admin/partials/simple-jwt-auth-admin-options.php:66
 msgid "Security"
 msgstr ""
 
-#: admin/partials/simple-jwt-auth-admin-settings.php:208
+#: admin/partials/simple-jwt-auth-admin-options.php:69
 msgid "Disable XML-RPC"
 msgstr ""
 
-#: admin/partials/simple-jwt-auth-admin-settings.php:209
+#: admin/partials/simple-jwt-auth-admin-options.php:70
 msgid "XML-RPC allows apps to connect to your WordPress site, but might expose your site's security. Disable this feature if you don't need it."
 msgstr ""
 
+#: admin/partials/simple-jwt-auth-admin-options.php:80
+msgid "Deleting Data"
+msgstr ""
+
+#: admin/partials/simple-jwt-auth-admin-options.php:83
+msgid "Remove configs data"
+msgstr ""
+
+#: admin/partials/simple-jwt-auth-admin-options.php:84
+msgid "Checking this box will permanently delete all JWT authentication tables and data while uninstalling, which is irreversible and cannot be recovered."
+msgstr ""
+
+#: admin/partials/simple-jwt-auth-admin-settings.php:94
+msgid "WordPress Version"
+msgstr ""
+
+#: admin/partials/simple-jwt-auth-admin-settings.php:112
+msgid "PHP Version"
+msgstr ""
+
+#: admin/partials/simple-jwt-auth-admin-settings.php:134
+msgid "Authencation"
+msgstr ""
+
+#: admin/partials/simple-jwt-auth-admin-settings.php:137
+msgid "Enable JWT"
+msgstr ""
+
+#: admin/partials/simple-jwt-auth-admin-settings.php:138
+msgid "Secure and reliable way to verify user identity and access control."
+msgstr ""
+
+#: admin/partials/simple-jwt-auth-admin-settings.php:151
+msgid "Choose Algorithm"
+msgstr ""
+
+#. translators: %s: the wp-config.php constant name.
+#: admin/partials/simple-jwt-auth-admin-settings.php:167
+#: admin/partials/simple-jwt-auth-admin-settings.php:175
+#: admin/partials/simple-jwt-auth-admin-settings.php:182
+#: admin/partials/simple-jwt-auth-admin-settings.php:186
+#, php-format
+msgid "This value is set by the %s constant in wp-config.php and cannot be changed here."
+msgstr ""
+
+#: admin/partials/simple-jwt-auth-admin-settings.php:172
+msgid "Enter your secret key"
+msgstr ""
+
+#: admin/partials/simple-jwt-auth-admin-settings.php:191
+msgid "*Generate a secure JSON Web Token signing keys using OpenSSL"
+msgstr ""
+
+#: admin/partials/simple-jwt-auth-admin-settings.php:198
+msgid "Endpoints"
+msgstr ""
+
+#: admin/partials/simple-jwt-auth-admin-settings.php:199
+msgid "List of endpoint URLs that can be used to interact with the API, allowing you to perform various actions and retrieve data, enabling you to access and utilize the API's functionalities."
+msgstr ""
+
+#: admin/partials/simple-jwt-auth-admin-settings.php:201
+msgid "Generate JWT token"
+msgstr ""
+
+#: admin/partials/simple-jwt-auth-admin-settings.php:206
+msgid "Validate JWT token"
+msgstr ""
+
+#: admin/partials/simple-jwt-auth-admin-settings.php:211
+msgid "Refresh JWT token"
+msgstr ""
+
+#: admin/partials/simple-jwt-auth-admin-settings.php:216
+msgid "Revoke JWT token"
+msgstr ""
+
 #: admin/partials/simple-jwt-auth-admin-settings.php:221
+msgid "Current user"
+msgstr ""
+
+#: admin/partials/simple-jwt-auth-admin-settings.php:230
+msgid "CORS Support"
+msgstr ""
+
+#: admin/partials/simple-jwt-auth-admin-settings.php:233
+msgid "Enable CORS"
+msgstr ""
+
+#: admin/partials/simple-jwt-auth-admin-settings.php:234
+msgid "CORS is an HTTP-header based mechanism that allows a web page to make requests to a server on a different domain than the one that served the web page."
+msgstr ""
+
+#: admin/partials/simple-jwt-auth-admin-settings.php:245
+msgid "Token Lifetime"
+msgstr ""
+
+#: admin/partials/simple-jwt-auth-admin-settings.php:248
+msgid "Access token lifetime (seconds)"
+msgstr ""
+
+#: admin/partials/simple-jwt-auth-admin-settings.php:252
+msgid "Refresh token lifetime (seconds)"
+msgstr ""
+
+#: admin/partials/simple-jwt-auth-admin-settings.php:260
 msgid "Save Changes"
 msgstr ""
 
@@ -220,78 +352,118 @@ msgstr ""
 msgid "Invalid public key format"
 msgstr ""
 
-#: includes/class-simple-jwt-auth-notice.php:46
-msgid "Token created successfully"
+#: includes/class-simple-jwt-auth-notice.php:44
+msgid "Secret key must be at least 32 characters long"
 msgstr ""
 
 #: includes/class-simple-jwt-auth-notice.php:47
-msgid "Token is valid"
+msgid "Token created successfully"
 msgstr ""
 
 #: includes/class-simple-jwt-auth-notice.php:48
-msgid "User ID not found in the token"
+msgid "Token is valid"
 msgstr ""
 
 #: includes/class-simple-jwt-auth-notice.php:49
-msgid "The issuer does not match with this server"
+msgid "User ID not found in the token"
 msgstr ""
 
 #: includes/class-simple-jwt-auth-notice.php:50
-msgid "JWT is not configured properly, please contact the admin"
+msgid "The issuer does not match with this server"
 msgstr ""
 
 #: includes/class-simple-jwt-auth-notice.php:51
-msgid "Authorization header malformed"
+msgid "JWT is not configured properly, please contact the admin"
 msgstr ""
 
 #: includes/class-simple-jwt-auth-notice.php:52
-msgid "Authorization header not found"
+msgid "JWT authentication is disabled, please contact the admin"
 msgstr ""
 
 #: includes/class-simple-jwt-auth-notice.php:53
-msgid "JWT secret key not configured, please contact the admin"
+msgid "Authorization header malformed"
 msgstr ""
 
 #: includes/class-simple-jwt-auth-notice.php:54
-msgid "Username or password is missing"
+msgid "Authorization header not found"
 msgstr ""
 
 #: includes/class-simple-jwt-auth-notice.php:55
-msgid "JWT private key not configured, please contact the admin"
+msgid "Token is invalid"
 msgstr ""
 
 #: includes/class-simple-jwt-auth-notice.php:56
-msgid "JWT public key not configured, please contact the admin"
+msgid "Token has expired"
 msgstr ""
 
 #: includes/class-simple-jwt-auth-notice.php:57
-msgid "JWT signing key not configured, please contact the admin"
+msgid "Refresh token is invalid"
 msgstr ""
 
 #: includes/class-simple-jwt-auth-notice.php:58
-msgid "Encryption key is not configured properly"
+msgid "Refresh token reuse detected; all sessions have been revoked"
 msgstr ""
 
 #: includes/class-simple-jwt-auth-notice.php:59
-msgid "Encryption key must be exactly 32 characters long"
+msgid "Token has been revoked"
 msgstr ""
 
 #: includes/class-simple-jwt-auth-notice.php:60
-msgid "Encryption process failed, contact admin"
+msgid "Too many requests, please try again later"
 msgstr ""
 
 #: includes/class-simple-jwt-auth-notice.php:61
-msgid "Decryption process failed, contact admin"
+msgid "JWT secret key not configured, please contact the admin"
+msgstr ""
+
+#: includes/class-simple-jwt-auth-notice.php:62
+msgid "Username or password is missing"
+msgstr ""
+
+#: includes/class-simple-jwt-auth-notice.php:63
+msgid "JWT private key not configured, please contact the admin"
 msgstr ""
 
 #: includes/class-simple-jwt-auth-notice.php:64
-msgid "Something went wrong, try again"
+msgid "JWT public key not configured, please contact the admin"
 msgstr ""
 
 #: includes/class-simple-jwt-auth-notice.php:65
+msgid "JWT signing key not configured, please contact the admin"
+msgstr ""
+
+#: includes/class-simple-jwt-auth-notice.php:66
+msgid "Encryption key is not configured properly"
+msgstr ""
+
+#: includes/class-simple-jwt-auth-notice.php:67
+msgid "Encryption key must be exactly 32 characters long"
+msgstr ""
+
+#: includes/class-simple-jwt-auth-notice.php:68
+msgid "Encryption process failed, contact admin"
+msgstr ""
+
+#: includes/class-simple-jwt-auth-notice.php:69
+msgid "Decryption process failed, contact admin"
+msgstr ""
+
+#: includes/class-simple-jwt-auth-notice.php:70
+msgid "Encryption key mismatch; re-save your JWT signing keys"
+msgstr ""
+
+#: includes/class-simple-jwt-auth-notice.php:73
+msgid "Something went wrong, try again"
+msgstr ""
+
+#: includes/class-simple-jwt-auth-notice.php:74
 msgid "Unsupported algorithm see https://tinyurl.com/uf4ns6fm"
 msgstr ""
 
-#: includes/class-simple-jwt-auth-notice.php:85
+#: includes/class-simple-jwt-auth-notice.php:94
 msgid "Something magical is happening"
+msgstr ""
+
+#: public/endpoints/simple-jwt-auth-rest.php:411
+msgid "User data retrieved successfully"
 msgstr ""

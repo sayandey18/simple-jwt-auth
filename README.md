@@ -52,15 +52,17 @@ SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
 
 ## Configuration
 
-Simple JWT Auth plugin needs a **Signing Key** to encrypt and decrypt the **secret key**, **private key**, and **public key**. This signing key must be exact 32 charecter long and never be revealed.
+Simple JWT Auth plugin needs a **Key-Encryption-Key (KEK)** to encrypt and decrypt the JWT **signing keys** (`secret_key`, `private_key`, and `public_key`) at rest. The KEK is defined via the **SIMPLE_JWT_AUTH_ENCRYPT_KEY** constant and must be exactly 32 characters long and never revealed. Rotating this KEK invalidates the stored signing keys and requires re-entering them in the plugin settings.
 
-To add the **signing key** edit your `wp-config.php` file and add a new constant called **SIMPLE_JWT_AUTH_ENCRYPT_KEY**
+To add the **key-encryption-key** edit your `wp-config.php` file and add a new constant called **SIMPLE_JWT_AUTH_ENCRYPT_KEY**
 
 ```
-define( 'SIMPLE_JWT_AUTH_ENCRYPT_KEY', 'your-32-char-signing-key' );
+define( 'SIMPLE_JWT_AUTH_ENCRYPT_KEY', 'your-32-char-encryption-key' );
 ```
 
-Generate a 32 charecter key from here: [https://string-gen.netlify.app](https://string-gen.netlify.app)
+Generate a 32 character key from here: [https://string-gen.netlify.app](https://string-gen.netlify.app)
+
+This plugin requires **PHP 8.2** or higher and **WordPress 7.0** or higher.
 
 Here is the sample response if the encryption key is not configured in wp-config.php file.
 
@@ -74,6 +76,28 @@ Here is the sample response if the encryption key is not configured in wp-config
 }
 ```
 
+### Signing keys via wp-config.php constants
+
+Instead of storing the signing keys in the database, you can define them directly in `wp-config.php` using constants. Constants take precedence over the values saved in the plugin settings, and their values are used as-is (plaintext, not encrypted — the KEK above only encrypts keys at rest in the database).
+
+```
+define( 'SIMPLE_JWT_AUTH_ALGORITHM',  'HS256' );     // HS256, HS384, HS512, RS256, RS384, RS512, ES256 or ES384.
+define( 'SIMPLE_JWT_AUTH_SECRET_KEY', 'your-secret-key' );       // Required for HS* algorithms (min 32 chars).
+define( 'SIMPLE_JWT_AUTH_PRIVATE_KEY', '-----BEGIN PRIVATE KEY-----...' ); // Required for RS*/ES* signing.
+define( 'SIMPLE_JWT_AUTH_PUBLIC_KEY',  '-----BEGIN PUBLIC KEY-----...' ); // Required for RS*/ES* verification.
+```
+
+All four constants are optional:
+
+| Constant | Overrides | Used for |
+|----------|-----------|----------|
+| `SIMPLE_JWT_AUTH_ALGORITHM` | `algorithm` | The JWT signing algorithm (HS256…ES384). |
+| `SIMPLE_JWT_AUTH_SECRET_KEY` | `secret_key` | Symmetric (HS*) signing and verification. |
+| `SIMPLE_JWT_AUTH_PRIVATE_KEY` | `private_key` | Asymmetric (RS*/ES*) signing. |
+| `SIMPLE_JWT_AUTH_PUBLIC_KEY` | `public_key` | Asymmetric (RS*/ES*) verification. |
+
+When a constant is defined, the corresponding field on the plugin Settings page is disabled and marked as "Defined in wp-config.php".
+
 ## REST Endpoints
 
 When the plugin is activated, a new namespace is added.
@@ -82,12 +106,15 @@ When the plugin is activated, a new namespace is added.
 /auth/v1
 ```
 
-Also, two new endpoints are added to this namespace.
+Also, five new endpoints are added to this namespace.
 
 | Endpoints                         | HTTP Verb |
 |-----------------------------------|:---------:|
 | /wp-json/auth/v1/token            |    POST   |
+| /wp-json/auth/v1/token/refresh    |    POST   |
+| /wp-json/auth/v1/token/revoke     |    POST   |
 | /wp-json/auth/v1/token/validate   |    POST   |
+| /wp-json/auth/v1/me               |    GET    |
 
 ### Requesting/Generating Token
 
@@ -116,7 +143,10 @@ curl --location 'https://example.com/wp-json/auth/v1/token' \
         "email": "sayandey@outlook.com",
         "nicename": "sayan_dey",
         "display_name": "Sayan Dey",
-        "token": "eyJ0eXAiOiJKV1QiLCJhbGciO........."
+        "token": "eyJ0eXAiOiJKV1QiLCJhbGciO.........",
+        "token_expires_in": 900,
+        "refresh_token": "opaque-refresh-token",
+        "refresh_expires_in": 1209600
     }
 }
 ```
@@ -189,6 +219,10 @@ curl --location --request POST 'https://example.com/wp-json/auth/v1/token/valida
     }
 }
 ```
+
+### Refresh & Revocation
+
+Access tokens are short-lived. When an access token expires, POST the `refresh_token` to `/wp-json/auth/v1/token/refresh` to rotate it and receive a new access (and refresh) token. Refresh tokens are opaque, stored server-side (SHA-256 hashed), and rotate on every use; a detected reuse revokes the entire token family. To invalidate a session, POST the refresh token to `/wp-json/auth/v1/token/revoke`. Refresh tokens are also revoked automatically on user logout and password reset.
 
 ## REST Errors
 
@@ -539,6 +573,81 @@ add_filter(
     10,
     2,
 );
+```
+
+#### simplejwt_auth_token_reuse_detected
+
+The `simplejwt_auth_token_reuse_detected` action fires when a refresh token reuse is detected and the token family is revoked.
+
+Args:
+
+- `int $user_id` The affected user ID.
+- `int $family_id` The refresh token family ID.
+- `string $ip` The client IP address.
+
+Usage example:
+
+```
+/**
+ * Handle a detected refresh token reuse.
+ *
+ * @param   int    $user_id   The affected user ID.
+ * @param   int    $family_id The refresh token family ID.
+ * @param   string $ip        The client IP address.
+ */
+add_action("simplejwt_auth_token_reuse_detected", function ($user_id, $family_id, $ip) {
+    // Handle the reuse event here.
+}, 10, 3);
+```
+
+#### simplejwt_rate_limit_max
+
+The `simplejwt_rate_limit_max` filter allows you to change the maximum number of attempts allowed within the rate-limit window.
+
+Default value:
+
+```
+10
+```
+
+Usage example:
+
+```
+/**
+ * Change the maximum rate-limit attempts.
+ *
+ * @param   int $max The maximum attempts.
+ * @return  int The maximum attempts.
+ */
+add_filter("simplejwt_rate_limit_max", function ($max) {
+    // Modify the maximum here.
+    return $max;
+});
+```
+
+#### simplejwt_rate_limit_window
+
+The `simplejwt_rate_limit_window` filter allows you to change the rate-limit window, in seconds.
+
+Default value:
+
+```
+MINUTE_IN_SECONDS
+```
+
+Usage example:
+
+```
+/**
+ * Change the rate-limit window.
+ *
+ * @param   int $window The window in seconds.
+ * @return  int The window in seconds.
+ */
+add_filter("simplejwt_rate_limit_window", function ($window) {
+    // Modify the window here.
+    return $window;
+});
 ```
 
 ## Credits

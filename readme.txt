@@ -1,603 +1,438 @@
-=== Simple JWT Auth ===
+=== Simple JWT Auth – JWT Authentication for WordPress REST API ===
 Contributors: sayandey18
 Donate link: https://github.com/sayandey18
-Tags: json web token, jwt auth, jwt, rest api, authentication
-Requires at least: 5.2 or higher
-Tested up to: 6.7
-Stable tag: 1.0.2
-Requires PHP: 7.4
+Tags: jwt authentication, jwt, json web token, rest api, rest api authentication, authentication, headless, headless cms, api, token, access token, refresh token
+Requires at least: 7.0
+Tested up to: 7.1
+Stable tag: 2.0.0
+Requires PHP: 8.2
 License: GPLv2 or later
-License URI: http://www.gnu.org/licenses/gpl-2.0.html
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Extends the WP REST API using JSON Web Tokens for robust authentication, providing a secure and reliable way to access and manage WordPress data.
+JWT authentication for the WordPress REST API: access and refresh tokens with rotation, revocation, and validation for headless and decoupled apps.
 
 == Description ==
 
-Extends the WordPress REST API using JSON Web Tokens for robust authentication and authorization. 
+Simple JWT Auth – JWT Authentication for WordPress REST API secures and protects your WordPress REST API using JSON Web Tokens. It lets external applications authenticate WordPress users, obtain an access token and a refresh token, and call any REST endpoint with a standard Bearer header.
 
-JSON Web Token (JWT) is an open standard ([RFC 7519](https://tools.ietf.org/html/rfc7519)) that defines a compact and self-contained way for securely transmitting information between two parties.
+JSON Web Token (JWT) is an open standard ([RFC 7519](https://tools.ietf.org/html/rfc7519)) that defines a compact, self-contained way to transmit information securely between two parties. This plugin uses JWT to provide a modern, stateless authentication layer for headless WordPress builds.
 
-It provides a secure and reliable way to access and manage WordPress data from external applications, making it ideal for building headless CMS solutions.
+**Modern access-token and refresh-token architecture**
 
-- Support & question: [WordPress support forum](https://wordpress.org/support/plugin/simple-jwt-auth/)
-- Reporting plugin's bug: [GitHub issues tracker](https://github.com/sayandey18/simple-jwt-auth/issues)
+* Issues short-lived **access tokens** (stateless JWTs) alongside opaque **refresh tokens**.
+* **Refresh-token rotation** — every refresh issues a new access token *and* a new refresh token, so a leaked refresh token is quickly invalidated.
+* **Reuse detection** — re-presenting a rotated refresh token outside a short grace window revokes the entire token family and fires the `simplejwt_auth_token_reuse_detected` action.
+* **Revocation** — revoke a single refresh token, its whole rotation family, or all of a user's sessions. Refresh tokens are also revoked automatically on logout and password reset.
+* **Validation** — a dedicated endpoint verifies an access token on demand, and a `/me` endpoint returns the authenticated user's profile.
 
-**Plugins GitHub Repo** https://github.com/sayandey18/simple-jwt-auth
+**Secure by design**
 
-## Enable PHP HTTP Authorization Header
+* Signing keys (`secret_key`, `private_key`, `public_key`) are encrypted at rest with AES-256-GCM using a key-encryption-key (KEK) defined in `wp-config.php`.
+* Refresh tokens are opaque and stored only as SHA-256 hashes — the raw token is never written to the database.
+* Rate limiting (configurable) is applied to the token, refresh, and revoke endpoints to deter brute force.
+* Optional CORS support and optional XML-RPC disabling.
 
-HTTP Authorization is a mechanism that allows clients to provide credentials to servers, thereby gaining access to protected resources. This is typically achieved by sending a special header, the Authorization header, in the HTTP request.
+**Modern and flexible**
 
-#### Shared Hosts
+* Requires PHP 8.2+ and WordPress 7.0+.
+* Supports HS256, HS384, HS512, RS256, RS384, RS512, ES256, and ES384 signing algorithms.
+* Extensible via filter and action hooks for payload, expiry, issuer, CORS headers, and the token response.
 
-Most shared hosts have disabled the **HTTP Authorization Header** by default.
+**Built for developers** — authenticate WordPress from React, Next.js, Vue, mobile apps, and any other external client. Configuration can live in the plugin settings or be overridden with `wp-config.php` constants.
 
-To enable this option you'll need to edit your **.htaccess** file by adding the following:
+- Support & questions: [WordPress support forum](https://wordpress.org/support/plugin/simple-jwt-auth/)
+- Bug reports: [GitHub issues tracker](https://github.com/sayandey18/simple-jwt-auth/issues)
+- Source code: [GitHub repository](https://github.com/sayandey18/simple-jwt-auth)
 
-`
+== Enable PHP HTTP Authorization Header ==
+
+HTTP Authorization is the mechanism clients use to send credentials to a server — a special `Authorization` header in the HTTP request. Many shared hosts have it disabled by default.
+
+= Shared hosts =
+
+Add the following to your `.htaccess` file:
+
+```
 RewriteEngine on
 RewriteCond %{HTTP:Authorization} ^(.*)
 RewriteRule ^(.*) - [E=HTTP_AUTHORIZATION:%1]
-`
+```
 
-#### WPEngine
+= WP Engine =
 
-To enable this option you'll need to edit your .htaccess file adding the follow:
+Add the following to your `.htaccess` file:
 
-`
+```
 SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
-`
+```
 
-## Configuration
+== Configuration ==
 
-Simple JWT Auth plugin needs a **Signing Key** to encrypt and decrypt the **secret key**, **private key**, and **public key**. This signing key must be exact 32 charecter long and never be revealed.
+Simple JWT Auth uses a **Key-Encryption-Key (KEK)** to encrypt and decrypt the JWT signing keys (`secret_key`, `private_key`, and `public_key`) at rest. Define it in `wp-config.php` with the `SIMPLE_JWT_AUTH_ENCRYPT_KEY` constant. The KEK must be exactly 32 characters long and must never be revealed.
 
-To add the **signing key** edit your `wp-config.php` file and add a new constant called **SIMPLE_JWT_AUTH_ENCRYPT_KEY**
+```
+define( 'SIMPLE_JWT_AUTH_ENCRYPT_KEY', 'your-32-char-encryption-key' );
+```
 
-`
-define( 'SIMPLE_JWT_AUTH_ENCRYPT_KEY', 'your-32-char-signing-key' );
-`
+Rotating the KEK invalidates the stored signing keys and requires re-entering them in the plugin settings (a `simplejwt_kek_mismatch` error is returned until then).
 
-Generate a 32 charecter key from here: [https://string-gen.netlify.app](https://string-gen.netlify.app)
+= Signing keys via wp-config.php constants =
 
-Here is the sample response if the encryption key is not configured in wp-config.php file.
+Instead of storing signing keys in the database, define them directly in `wp-config.php`. Constants take precedence over the plugin settings, and their values are used as-is (plaintext, not encrypted).
 
-`
-{
-    "code": "simplejwt_bad_encryption_key",
-    "message": "Encryption key is not configured properly.",
-    "data": {
-        "status": 403
-    }
-}
-`
+```
+define( 'SIMPLE_JWT_AUTH_ALGORITHM', 'HS256' );            // HS256, HS384, HS512, RS256, RS384, RS512, ES256 or ES384.
+define( 'SIMPLE_JWT_AUTH_SECRET_KEY', 'your-secret-key' ); // Required for HS* algorithms (min 32 chars).
+define( 'SIMPLE_JWT_AUTH_PRIVATE_KEY', '-----BEGIN PRIVATE KEY-----...' ); // Required for RS*/ES* signing.
+define( 'SIMPLE_JWT_AUTH_PUBLIC_KEY', '-----BEGIN PUBLIC KEY-----...' );   // Required for RS*/ES* verification.
+```
 
-## REST Endpoints
+| Constant | Overrides | Used for |
+|----------|-----------|----------|
+| `SIMPLE_JWT_AUTH_ALGORITHM` | `algorithm` | The JWT signing algorithm. |
+| `SIMPLE_JWT_AUTH_SECRET_KEY` | `secret_key` | Symmetric (HS*) signing and verification. |
+| `SIMPLE_JWT_AUTH_PRIVATE_KEY` | `private_key` | Asymmetric (RS*/ES*) signing. |
+| `SIMPLE_JWT_AUTH_PUBLIC_KEY` | `public_key` | Asymmetric (RS*/ES*) verification. |
 
-When the plugin is activated, a new namespace is added.
+When a constant is defined, the matching field on the Settings page is disabled and marked "Defined in wp-config.php".
 
-`
-/auth/v1
-`
+= Enabling authentication =
 
-Also, two new endpoints are added to this namespace.
+For a fresh install, authentication is disabled by default. Turn on **Enable JWT** in the plugin settings, choose an algorithm, and provide the required signing key(s) before issuing tokens.
 
-`
-*/wp-json/auth/v1/token          | POST
-*/wp-json/auth/v1/token/validate | POST
-`
+== REST Endpoints ==
 
-### Requesting/Generating Token
+The plugin registers the `auth/v1` namespace with five endpoints:
 
-To generate a new token, submit a POST request to this endpoint. With `username` and `password` as the parameters.
+| Endpoint | Method | Purpose |
+|----------|:------:|---------|
+| `/wp-json/auth/v1/token` | POST | Authenticate credentials; return an access token and a refresh token. |
+| `/wp-json/auth/v1/token/refresh` | POST | Rotate an access token (and refresh token) using a refresh token. |
+| `/wp-json/auth/v1/token/revoke` | POST | Revoke a refresh token and its rotation family. |
+| `/wp-json/auth/v1/token/validate` | POST | Validate an access token. |
+| `/wp-json/auth/v1/me` | GET | Return the authenticated user's profile. |
 
-It will validates the user credentials, and returns success response including a token if the authentication is correct or returns an error response if the authentication is failed.
+= Generate a token =
 
-`
+Submit a `POST` request with `username` and `password`:
+
+```
 curl --location 'https://example.com/wp-json/auth/v1/token' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "username": "wordpress_username",
     "password": "wordpress_password"
 }'
-`
+```
 
-#### Sample of success response
+Success response:
 
-`
+```
 {
     "code": "simplejwt_auth_credential",
     "message": "Token created successfully",
     "data": {
         "status": 200,
         "id": "2",
-        "email": "sayandey@outlook.com",
-        "nicename": "sayan_dey",
-        "display_name": "Sayan Dey",
-        "token": "eyJ0eXAiOiJKV1QiLCJhbGciO........."
+        "email": "user@example.com",
+        "nicename": "username",
+        "display_name": "User Name",
+        "token": "eyJ0eXAiOiJKV1QiLCJhbGciOi...",
+        "token_expires_in": 900,
+        "refresh_token": "opaque-refresh-token",
+        "refresh_expires_in": 1209600
     }
 }
-`
+```
 
-#### Sample of error response
+Store the access token and refresh token in your application (a secure cookie, `localStorage`, or a wrapper such as [localForage](https://localforage.github.io/localForage/)). Then pass the access token as a Bearer header on every protected request:
 
-`
-{
-    "code": "simplejwt_invalid_username",
-    "message": "Error: The username admin_user is not registered on this site. If you are unsure of your username, try your email address instead.",
-    "data": {
-        "status": 403
-    }
-}
-`
+```
+Authorization: Bearer your-access-token
+```
 
-Once you get the token, you can store it somewhere in your application:
+For example, creating a post with an access token:
 
-- using **Cookie** 
-- or using **localstorage** 
-- or using a wrapper like [localForage](https://localforage.github.io/localForage/) or [PouchDB](https://pouchdb.com/)
-- or using local database like SQLite
-- or your choice based on app you develop
-
-Then you should pass this token as _Bearer Authentication_ header to every API call.
-
-`
-Authorization: Bearer your-generated-token
-`
-
-Here is an example to create WordPress post using JWT token authentication.
-
-`
+```
 curl --location 'https://example.com/wp-json/wp/v2/posts' \
 --header 'Content-Type: application/json' \
---header 'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciO.........' \
+--header 'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOi...' \
 --data '{
-    "title": "Dummy post through API",
-    "content": "Lorem Ipsum is simply dummy text of the printing and typesetting industry.",
-    "status": "publish",
-    "tags": [
-        4,
-        5,
-        6
-    ]
+    "title": "Hello headless",
+    "content": "Created through the REST API with JWT authentication.",
+    "status": "publish"
 }'
-`
+```
 
-Plugin's middleware intercepts every request to the server, checking for the presence of the **Authorization** header. If the header is found, it attempts to decode the JWT token contained within.
+= Refresh a token =
 
-Upon successful decoding, the middleware extracts the user information stored in the token and authenticates the user accordingly, ensuring that only authorized requests are processed.
+Access tokens are short-lived. When one expires, send the refresh token to `/token/refresh` (in the body or as a Bearer header) to rotate it and receive a new access token and refresh token:
 
-### Validating Token
+```
+curl --location 'https://example.com/wp-json/auth/v1/token/refresh' \
+--header 'Content-Type: application/json' \
+--data-raw '{ "refresh_token": "opaque-refresh-token" }'
+```
 
-This is a helper endpoint to validate a token. You only will need to make a **POST** request sending the Bearer Authorization header.
+The response has the same shape as the token response. Each rotation invalidates the previous refresh token.
 
-`
+= Revoke a token =
+
+To invalidate a session, send the refresh token to `/token/revoke`:
+
+```
+curl --location 'https://example.com/wp-json/auth/v1/token/revoke' \
+--header 'Content-Type: application/json' \
+--data-raw '{ "refresh_token": "opaque-refresh-token" }'
+```
+
+Success response:
+
+```
+{
+    "code": "simplejwt_token_revoked",
+    "message": "Token has been revoked",
+    "data": { "status": 200 }
+}
+```
+
+= Validate a token =
+
+Verify an access token with a `POST` request carrying the Bearer header:
+
+```
 curl --location --request POST 'https://example.com/wp-json/auth/v1/token/validate' \
---header 'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciO.........'
-`
+--header 'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOi...'
+```
 
-#### Sample of success response
+Success response:
 
-`
+```
 {
     "code": "simplejwt_valid_token",
     "message": "Token is valid",
-    "data": {
-        "status": 200
-    }
+    "data": { "status": 200 }
 }
-`
+```
 
-## REST Errors
+= Current user =
 
-If the token is invalid an error will be returned, here are some samples of errors.
+Get the authenticated user's profile:
 
-#### Invalid Username
+```
+curl --location 'https://example.com/wp-json/auth/v1/me' \
+--header 'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOi...'
+```
 
-`
+Success response:
+
+```
 {
-    "code": "simplejwt_invalid_username",
-    "message": "Error: The username admin is not registered on this site. If you are unsure of your username, try your email address instead.",
+    "code": "simplejwt_user",
+    "message": "User data retrieved successfully",
     "data": {
-        "status": 403
+        "status": 200,
+        "id": 2,
+        "email": "user@example.com",
+        "nicename": "username",
+        "display_name": "User Name",
+        "roles": ["administrator"]
     }
 }
-`
+```
 
-#### Invalid Password
+== REST Errors ==
 
-`
-{
-    "code": "simplejwt_incorrect_password",
-    "message": "Error: The password you entered for the username tiyasha_das is incorrect. Lost your password?",
-    "data": {
-        "status": 403
-    }
-}
-`
+Every error returns a consistent envelope with a stable `code`, a `message`, and a `data.status` HTTP status. Common codes include:
 
-#### Invalid Signature
+| Code | Meaning |
+|------|---------|
+| `simplejwt_missing_credentials` | Username or password is missing. |
+| `simplejwt_invalid_username` | The username is not registered on this site. |
+| `simplejwt_incorrect_password` | The password is incorrect. |
+| `simplejwt_no_auth_header` | The Authorization header is missing. |
+| `simplejwt_bad_auth_header` | The Authorization header is malformed. |
+| `simplejwt_invalid_token` | The access token is invalid (bad signature, malformed, or not yet valid). |
+| `simplejwt_expired_token` | The access or refresh token has expired. |
+| `simplejwt_invalid_refresh_token` | The refresh token is unknown or invalid. |
+| `simplejwt_reused_refresh_token` | A rotated refresh token was reused; the token family was revoked. |
+| `simplejwt_revoked_token` | The token has been revoked. |
+| `simplejwt_bad_issuer` | The token issuer does not match this server. |
+| `simplejwt_unsupported_algorithm` | The configured signing algorithm is unsupported. |
+| `simplejwt_rate_limited` | Too many requests; please try again later. |
+| `simplejwt_bad_config` | JWT authentication is not configured or is disabled. |
+| `simplejwt_bad_encryption_key` | The key-encryption-key is not configured. |
+| `simplejwt_invalid_enckey_length` | The key-encryption-key is not exactly 32 characters. |
+| `simplejwt_kek_mismatch` | The key-encryption-key was rotated; re-enter the signing keys. |
 
-`
-{
-    "code": "simplejwt_invalid_token",
-    "message": "Signature verification failed",
-    "data": {
-        "status": 403
-    }
-}
-`
+== Available Hooks ==
 
-#### Invalid Token
+Simple JWT Auth is developer-friendly and exposes filter and action hooks to override its default behaviour.
 
-`
-{
-    "code": "simplejwt_invalid_token",
-    "message": "Syntax error, malformed JSON",
-    "data": {
-        "status": 403
-    }
-}
-`
+= simplejwt_cors_allow_headers (filter) =
 
-#### Expired Token
+Modify the CORS `Access-Control-Allow-Headers` value. Default: `Access-Control-Allow-Headers, Content-Type, Authorization`.
 
-`
-{
-    "code": "simplejwt_invalid_token",
-    "message": "Expired token",
-    "data": {
-        "status": 403
-    }
-}
-`
-
-#### No Authorization
-
-`
-{
-    "code": "simplejwt_no_auth_header",
-    "message": "Authorization header not found",
-    "data": {
-        "status": 403
-    }
-}
-`
-
-#### Bad Authorization
-
-`
-{
-    "code": "simplejwt_bad_auth_header",
-    "message": "Authorization header malformed",
-    "data": {
-        "status": 400
-    }
-}
-`
-
-#### Wrong Algorithm Token
-
-`
-{
-    "code": "simplejwt_invalid_token",
-    "message": "Incorrect key for this algorithm",
-    "data": {
-        "status": 403
-    }
-}
-`
-
-#### Unsupported Algorithm
-
-`
-{
-    "code": "simplejwt_unsupported_algorithm",
-    "message": "Unsupported algorithm see https://tinyurl.com/uf4ns6fm",
-    "data": {
-        "status": 403
-    }
-}
-`
-
-#### Bad Configuration
-
-`
-{
-    "code": "simplejwt_bad_config",
-    "message": "JWT is not configured properly, please contact the admin",
-    "data": {
-        "status": 403
-    }
-}
-`
-
-#### Bad Encryption Key
-
-`
-{
-    "code": "simplejwt_bad_encryption_key",
-    "message": "Encryption key is not configured properly.",
-    "data": {
-        "status": 403
-    }
-}
-`
-
-#### Invalid Encryption Key Length
-
-`
-{
-    "code": "simplejwt_invalid_enckey_length",
-    "message": "Encryption key must be exactly 32 characters long",
-    "data": {
-        "status": 400
-    }
-}
-`
-
-## Available Hooks
-
-**Simple JWT Auth** is a developer-friendly plugin. It has various filter hooks available to override the default settings.
-
-#### simplejwt_cors_allow_headers
-
-The `simplejwt_cors_allow_headers` allows you to modify the available headers when the Cross-Origin Resource Sharing (CORS) support is enabled.
-
-Default value:
-
-`
-'Access-Control-Allow-Headers, Content-Type, Authorization'
-`
-
-Usage example:
-
-`
-/**
- * Change the allowed CORS headers.
- *
- * @param   string $headers The allowed headers.
- * @return  string The allowed headers.
- */
-add_filter("simplejwt_cors_allow_headers", function ($headers) {
-    // Modify the headers here.
+```
+add_filter( 'simplejwt_cors_allow_headers', function ( $headers ) {
     return $headers;
-});
-`
+} );
+```
 
-#### simplejwt_auth_iss
+= simplejwt_auth_iss (filter) =
 
-The `simplejwt_auth_iss` allows you to change the [**iss**](https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.1) value before the payload is encoded to be a token.
+Change the token `iss` (issuer) claim. Default: `get_bloginfo( 'url' )`.
 
-Default value:
-
-`
-get_bloginfo( 'url' );
-`
-
-Usage example:
-
-`
-/**
- * Change the token issuer.
- *
- * @param   string $iss The token issuer.
- * @return  string The token issuer.
- */
-add_filter("simplejwt_auth_iss", function ($iss) {
-    // Modify the "iss" here.
+```
+add_filter( 'simplejwt_auth_iss', function ( $iss ) {
     return $iss;
-});
-`
+} );
+```
 
-#### simplejwt_not_before
+= simplejwt_not_before (filter) =
 
-The `simplejwt_not_before` allows you to change the [**nbf**](https://tools.ietf.org/html/rfc7519#section-4.1.5) value before the payload is encoded to be a token.
+Change the token `nbf` (not-before) claim. Default: the issue time.
 
-Default value:
+```
+add_filter( 'simplejwt_not_before', function ( $not_before, $issued_at ) {
+    return $not_before;
+}, 10, 2 );
+```
 
-`
-time();
-`
+= simplejwt_auth_expire (filter) =
 
-Usage example:
+Change the token `exp` (expiry) claim. Default: `time() + access token lifetime` (900 seconds by default).
 
-`
-/**
- * Change the token's nbf value.
- *
- * @param   int $not_before The default "nbf" value in timestamp.
- * @param   int $issued_at The "iat" value in timestamp.
- * @return  int The "nbf" value.
- */
-add_filter(
-    "simplejwt_not_before",
-    function ($not_before, $issued_at) {
-        // Modify the "not_before" here.
-        return $not_before;
-    },
-    10,
-    2,
-);
-`
+```
+add_filter( 'simplejwt_auth_expire', function ( $expire, $issued_at ) {
+    return $expire;
+}, 10, 2 );
+```
 
-#### simplejwt_auth_expire
+= simplejwt_payload_before_sign (filter) =
 
-The `simplejwt_auth_expire` allows you to change the value [**exp**](https://tools.ietf.org/html/rfc7519#section-4.1.4) before the payload is encoded to be a token.
+Modify the JWT payload before it is signed. The payload contains the `iss`, `iat`, `nbf`, `exp`, `sub`, and `jti` claims (plus the legacy `data.user.id`).
 
-Default value:
+```
+add_filter( 'simplejwt_payload_before_sign', function ( $payload, $user ) {
+    return $payload;
+}, 10, 2 );
+```
 
-`
-time() + ( DAY_IN_SECONDS * 7 )
-`
+= simplejwt_token_before_dispatch (filter) =
 
-Usage example:
+Modify the token response before it is returned to the client. The response includes the access token, refresh token, and their lifetimes.
 
-`
-/**
- * Change the token's expire value.
- *
- * @param   int $expire The default "exp" value in timestamp.
- * @param   int $issued_at The "iat" value in timestamp.
- * @return  int The "nbf" value.
- */
-add_filter(
-    "simplejwt_auth_expire",
-    function ($expire, $issued_at) {
-        // Modify the "expire" here.
-        return $expire;
-    },
-    10,
-    2,
-);
-`
+```
+add_filter( 'simplejwt_token_before_dispatch', function ( $data, $user ) {
+    return $data;
+}, 10, 2 );
+```
 
-#### simplejwt_payload_before_sign
+= simplejwt_auth_token_reuse_detected (action) =
 
-The `simplejwt_payload_before_sign` allows you to modify all the payload data before being encoded and signed.
+Fired when refresh-token reuse is detected and a token family is revoked. Arguments: `$user_id`, `$family_id`, `$ip`.
 
-Default value:
+```
+add_action( 'simplejwt_auth_token_reuse_detected', function ( $user_id, $family_id, $ip ) {
+    // Alert, log, or revoke further sessions here.
+}, 10, 3 );
+```
 
-`
-$payload = [
-    "iss" => $this->simplejwt_get_iss(),
-    "iat" => $issued_at,
-    "nbf" => $not_before,
-    "exp" => $expire,
-    "data" => [
-        "user" => [
-            "id" => $user->data->ID,
-        ],
-    ],
-];
-`
+= simplejwt_rate_limit_max (filter) =
 
-Usage example:
+Change the maximum number of attempts allowed within the rate-limit window. Default: `10`.
 
-`
-/**
- * Modify the payload data before being encoded & signed.
- *
- * @param   array $payload The default payload
- * @param   WP_User $user The authenticated user.
- * @return  array The payloads data.
- */
-add_filter(
-    "simplejwt_payload_before_sign",
-    function ($payload, $user) {
-        // Modify the payload here.
-        return $payload;
-    },
-    10,
-    2,
-);
-`
+```
+add_filter( 'simplejwt_rate_limit_max', function ( $max ) {
+    return $max;
+} );
+```
 
-#### simplejwt_token_before_dispatch
+= simplejwt_rate_limit_window (filter) =
 
-The `simplejwt_token_before_dispatch` allows you to modify the token response before to dispatch it to the client.
+Change the rate-limit window, in seconds. Default: `MINUTE_IN_SECONDS` (60).
 
-Default value:
+```
+add_filter( 'simplejwt_rate_limit_window', function ( $window ) {
+    return $window;
+} );
+```
 
-`
-$data = new WP_REST_Response(
-    [
-        "code" => "simplejwt_auth_credential",
-        "message" => JWTNotice::get_notice("auth_credential"),
-        "data" => [
-            "status" => 200,
-            "id" => $user->data->ID,
-            "email" => $user->data->user_email,
-            "nicename" => $user->data->user_nicename,
-            "display_name" => $user->data->display_name,
-            "token" => $token,
-        ],
-    ],
-    200,
-);
-`
+== Postman Collection ==
 
-Usage example:
-
-`
-/**
- * Modify the JWT response before dispatch.
- *
- * @param   WP_REST_Response $data The token response data.
- * @param   WP_User $user The user object for whom the token is being generated.
- * @return  WP_REST_Response Modified token response data.
- */
-add_filter(
-    "simplejwt_token_before_dispatch",
-    function ($data, $user) {
-        // Modify the response data.
-        if ($user instanceof WP_User) {
-        }
-        return $data;
-    },
-    10,
-    2,
-);
-`
-
-## Credits
-
-* [WordPress REST API](https://developer.wordpress.org/rest-api/)
-* [php-jwt by Firebase](https://github.com/firebase/php-jwt)
+A ready-to-use Postman collection is bundled with the plugin. Open **Simple JWT Auth → Documentation** in your WordPress admin and click **Download Postman Collection**, then import the JSON into Postman. The collection preconfigures your site URL and includes the token, refresh, revoke, validate, and `/me` requests.
 
 == Installation ==
 
-This section describes how to install the plugin and get it working.
+= Using FTP =
 
-= Using FTP Client =
+1. Download the plugin from [here](https://downloads.wordpress.org/plugin/simple-jwt-auth.zip).
+2. Unzip the `simple-jwt-auth.zip` file.
+3. Upload the `simple-jwt-auth` folder to the `/wp-content/plugins/` directory.
+4. Activate the plugin through the Plugins dashboard.
 
-1. Download the latest plugin from [here](https://downloads.wordpress.org/plugin/simple-jwt-auth.zip)
-2. Unzip the `simple-jwt-auth.zip` file in your computer.
-3. Upload `simple-jwt-auth` folder into the `/wp-content/plugins/` directory.
-4. Activate the plugin through the 'Plugins' dashboard.
+= Uploading from the dashboard =
 
-= Uploading from Dashboard =
-
-1. Download the latest plugin from [here](https://downloads.wordpress.org/plugin/simple-jwt-auth.zip)
-2. Navigate to the Plugins section and click 'Add New Plugin' from the dashboard.
-3. Navigate to the Upload area by clicking on the 'Upload Plugin' button.
-4. Select the `simple-jwt-auth.zip` from your computer.
-5. Click on the 'Install Now' button.
-6. Activate the plugin through the 'Plugins' dashboard.
+1. Download the plugin from [here](https://downloads.wordpress.org/plugin/simple-jwt-auth.zip).
+2. In the dashboard, go to Plugins → Add New Plugin.
+3. Click Upload Plugin.
+4. Select the `simple-jwt-auth.zip` file.
+5. Click Install Now.
+6. Activate the plugin through the Plugins dashboard.
 
 == Frequently Asked Questions ==
 
-= Do you have GitHub repository for this plugin? =
+= Where can I find the source code? =
 
-Yes, Simple JWT Auth has a GitHub repository. Please visit [here](https://github.com/sayandey18/simple-jwt-auth) and consider giving us a star.
+Simple JWT Auth is open source. Visit the [GitHub repository](https://github.com/sayandey18/simple-jwt-auth) and consider giving it a star.
 
-= I am a developer, Where I can contribute to this project? =
+= How can I contribute? =
 
-Thank you so much. We really appreciate it. Please check our [github repository](https://github.com/sayandey18/simple-jwt-auth) for more details.
+Thank you — contributions are welcome. See the [GitHub repository](https://github.com/sayandey18/simple-jwt-auth) for details.
 
-= I found a bug, where I can report? =
+= Where can I report a bug? =
 
-Please submit an issue in our support portal. If you are a developer please [create a github issue.](https://github.com/sayandey18/simple-jwt-auth/issues)
+Submit a ticket in the [WordPress support forum](https://wordpress.org/support/plugin/simple-jwt-auth/) or, for developers, [create a GitHub issue](https://github.com/sayandey18/simple-jwt-auth/issues).
+
+= Why do I get "Encryption key is not configured properly"? =
+
+The `SIMPLE_JWT_AUTH_ENCRYPT_KEY` constant is missing from `wp-config.php`. Add it with a value that is exactly 32 characters long.
+
+= Does this plugin work with React, Next.js, Vue, or mobile apps? =
+
+Yes. Any client that can make HTTP requests and send a `Authorization: Bearer <token>` header can authenticate against the REST API.
 
 == Screenshots ==
 
-1. Simple JWT Auth Dashboard
-2. Simple JWT Auth Settings
-3. Simple JWT Auth Options
+1. Simple JWT Auth Settings
+2. Simple JWT Auth Options
+3. Simple JWT Auth Documentation
 
 == Changelog ==
-= 1.0.2 (Date: November 17, 2024) =
-* Tested up to WordPress 6.7
 
-= 1.0.1 (Date: October 20, 2024) =
-* Disabled allowing direct file access.
+= 2.0.0 =
+* Added refresh tokens with rotation and revocation (POST /token/refresh, POST /token/revoke).
+* Added the /auth/v1/me endpoint to return the authenticated user profile.
+* Added access token and refresh token lifetime settings.
+* Added rate limiting to the token, refresh, and revoke endpoints.
+* Enforced the enable_auth setting, auto-migrating existing configurations to stay enabled.
+* Updated firebase/php-jwt to ^7.1 and raised requirements to WordPress 7.0 / PHP 8.2.
+* Corrected the supported algorithms list (HS256, HS384, HS512, RS256, RS384, RS512, ES256, ES384).
+* Security hardening: opaque refresh tokens stored SHA-256 hashed, reuse detection, and revocation on logout and password reset.
+
+= 1.0.2 =
+* Tested up to WordPress 6.7.
+
+= 1.0.1 =
+* Disabled direct file access.
 * Fixed the undefined variable notice in the admin area.
 * Bug fixes and improvements.
 
-= 1.0.0 (Date: October 05, 2024) =
+= 1.0.0 =
 * Initial release.
-* 46 git commits so far.
-* Work for one month during the free time.
 
 == Upgrade Notice ==
-Current version is compatible with previous version, feel free to upgrade.
+
+= 2.0.0 =
+Version 2.0.0 is a major release requiring PHP 8.2+ and WordPress 7.0+. It introduces refresh-token rotation and revocation and now enforces the Enable JWT setting. Existing installs with configured signing keys are automatically kept enabled.

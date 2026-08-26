@@ -485,6 +485,7 @@
     display: inline-flex;
     gap: 10px;
     align-items: center;
+    text-decoration: none;
     justify-content: center;
     border-radius: 5px;
     padding: 6px 10px;
@@ -549,6 +550,40 @@
 
 .simplejwt-none {
     display: none;
+}
+
+.simplejwt-code-block {
+    margin: 10px 0 20px;
+    padding: 12px 14px;
+    background: #f0f0f1;
+    border: 1px solid #dcdcde;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.simplejwt-docs-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0 20px;
+}
+
+.simplejwt-docs-table th,
+.simplejwt-docs-table td {
+    padding: 8px 10px;
+    border: 1px solid #dcdcde;
+    text-align: left;
+    vertical-align: top;
+}
+
+.simplejwt-docs-table th {
+    background: #f6f7f7;
+    font-weight: 600;
+}
+
+.simplejwt-docs-table code {
+    white-space: nowrap;
 }
 
 @media (min-width: 768px) {
