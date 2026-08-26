@@ -87,12 +87,10 @@ define( 'SIMPLE_JWT_AUTH_PRIVATE_KEY', '-----BEGIN PRIVATE KEY-----...' ); // Re
 define( 'SIMPLE_JWT_AUTH_PUBLIC_KEY', '-----BEGIN PUBLIC KEY-----...' );   // Required for RS*/ES* verification.
 `
 
-| Constant | Overrides | Used for |
-|----------|-----------|----------|
-| `SIMPLE_JWT_AUTH_ALGORITHM` | `algorithm` | The JWT signing algorithm. |
-| `SIMPLE_JWT_AUTH_SECRET_KEY` | `secret_key` | Symmetric (HS*) signing and verification. |
-| `SIMPLE_JWT_AUTH_PRIVATE_KEY` | `private_key` | Asymmetric (RS*/ES*) signing. |
-| `SIMPLE_JWT_AUTH_PUBLIC_KEY` | `public_key` | Asymmetric (RS*/ES*) verification. |
+* `SIMPLE_JWT_AUTH_ALGORITHM` — overrides `algorithm`, the JWT signing algorithm.
+* `SIMPLE_JWT_AUTH_SECRET_KEY` — overrides `secret_key`, used for symmetric (HS256/384/512) signing and verification.
+* `SIMPLE_JWT_AUTH_PRIVATE_KEY` — overrides `private_key`, used for asymmetric (RSA/EC) signing.
+* `SIMPLE_JWT_AUTH_PUBLIC_KEY` — overrides `public_key`, used for asymmetric (RSA/EC) verification.
 
 When a constant is defined, the matching field on the Settings page is disabled and marked "Defined in wp-config.php".
 
@@ -104,13 +102,11 @@ For a fresh install, authentication is disabled by default. Turn on **Enable JWT
 
 The plugin registers the `auth/v1` namespace with five endpoints:
 
-| Endpoint | Method | Purpose |
-|----------|:------:|---------|
-| `/wp-json/auth/v1/token` | POST | Authenticate credentials; return an access token and a refresh token. |
-| `/wp-json/auth/v1/token/refresh` | POST | Rotate an access token (and refresh token) using a refresh token. |
-| `/wp-json/auth/v1/token/revoke` | POST | Revoke a refresh token and its rotation family. |
-| `/wp-json/auth/v1/token/validate` | POST | Validate an access token. |
-| `/wp-json/auth/v1/me` | GET | Return the authenticated user's profile. |
+* `POST /wp-json/auth/v1/token` — Authenticate credentials; return an access token and a refresh token.
+* `POST /wp-json/auth/v1/token/refresh` — Rotate an access token (and refresh token) using a refresh token.
+* `POST /wp-json/auth/v1/token/revoke` — Revoke a refresh token and its rotation family.
+* `POST /wp-json/auth/v1/token/validate` — Validate an access token.
+* `GET /wp-json/auth/v1/me` — Return the authenticated user's profile.
 
 = Generate a token =
 
@@ -245,25 +241,23 @@ Success response:
 
 Every error returns a consistent envelope with a stable `code`, a `message`, and a `data.status` HTTP status. Common codes include:
 
-| Code | Meaning |
-|------|---------|
-| `simplejwt_missing_credentials` | Username or password is missing. |
-| `simplejwt_invalid_username` | The username is not registered on this site. |
-| `simplejwt_incorrect_password` | The password is incorrect. |
-| `simplejwt_no_auth_header` | The Authorization header is missing. |
-| `simplejwt_bad_auth_header` | The Authorization header is malformed. |
-| `simplejwt_invalid_token` | The access token is invalid (bad signature, malformed, or not yet valid). |
-| `simplejwt_expired_token` | The access or refresh token has expired. |
-| `simplejwt_invalid_refresh_token` | The refresh token is unknown or invalid. |
-| `simplejwt_reused_refresh_token` | A rotated refresh token was reused; the token family was revoked. |
-| `simplejwt_revoked_token` | The token has been revoked. |
-| `simplejwt_bad_issuer` | The token issuer does not match this server. |
-| `simplejwt_unsupported_algorithm` | The configured signing algorithm is unsupported. |
-| `simplejwt_rate_limited` | Too many requests; please try again later. |
-| `simplejwt_bad_config` | JWT authentication is not configured or is disabled. |
-| `simplejwt_bad_encryption_key` | The key-encryption-key is not configured. |
-| `simplejwt_invalid_enckey_length` | The key-encryption-key is not exactly 32 characters. |
-| `simplejwt_kek_mismatch` | The key-encryption-key was rotated; re-enter the signing keys. |
+* `simplejwt_missing_credentials` — Username or password is missing.
+* `simplejwt_invalid_username` — The username is not registered on this site.
+* `simplejwt_incorrect_password` — The password is incorrect.
+* `simplejwt_no_auth_header` — The Authorization header is missing.
+* `simplejwt_bad_auth_header` — The Authorization header is malformed.
+* `simplejwt_invalid_token` — The access token is invalid (bad signature, malformed, or not yet valid).
+* `simplejwt_expired_token` — The access or refresh token has expired.
+* `simplejwt_invalid_refresh_token` — The refresh token is unknown or invalid.
+* `simplejwt_reused_refresh_token` — A rotated refresh token was reused; the token family was revoked.
+* `simplejwt_revoked_token` — The token has been revoked.
+* `simplejwt_bad_issuer` — The token issuer does not match this server.
+* `simplejwt_unsupported_algorithm` — The configured signing algorithm is unsupported.
+* `simplejwt_rate_limited` — Too many requests; please try again later.
+* `simplejwt_bad_config` — JWT authentication is not configured or is disabled.
+* `simplejwt_bad_encryption_key` — The key-encryption-key is not configured.
+* `simplejwt_invalid_enckey_length` — The key-encryption-key is not exactly 32 characters.
+* `simplejwt_kek_mismatch` — The key-encryption-key was rotated; re-enter the signing keys.
 
 == Available Hooks ==
 
