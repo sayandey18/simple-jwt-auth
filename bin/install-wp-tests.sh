@@ -37,7 +37,7 @@ elif [[ $WP_VERSION == 'nightly' || $WP_VERSION == 'trunk' ]]; then
 	WP_TESTS_TAG="trunk"
 else
 	# latest stable
-	LATEST_VERSION=$(curl -s https://api.wordpress.org/core/version-check/1.7/ | head -n 1)
+	LATEST_VERSION=$(curl -s https://api.wordpress.org/core/version-check/1.7/ | grep -oP '"current":"\K[^"]+' | head -n 1)
 	if [[ -z "$LATEST_VERSION" ]]; then
 		echo "Latest WordPress version could not be found"
 		exit 1
