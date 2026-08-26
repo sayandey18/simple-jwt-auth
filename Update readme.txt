@@ -78,7 +78,7 @@ Rotating the KEK invalidates the stored signing keys and requires re-entering th
 
 = Signing keys via wp-config.php constants =
 
-Instead of storing signing keys in the database, define them directly in `wp-config.php`. Constants take precedence over the plugin settings, and their values are used as-is (plaintext, not encrypted).
+Instead of storing signing keys in the database, define them directly in `wp-config.php` file. Constants take precedence over the plugin settings, and their values are used as-is (plaintext, not encrypted).
 
 `
 define( 'SIMPLE_JWT_AUTH_ALGORITHM', 'HS256' );            // HS256, HS384, HS512, RS256, RS384, RS512, ES256 or ES384.
